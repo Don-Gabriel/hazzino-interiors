@@ -1,0 +1,884 @@
+HACKATHON TASK
+Web-Based 3D Furniture Modelling System
+Challenge Theme
+Design and Develop a SketchUp-Like 3D Modelling Application for Furniture & Interior Design
+Objective
+Develop a browser-based 3D modelling application that allows users to manually create furniture and interior models using tools similar to SketchUp.
+The system should allow designers, carpenters, interior professionals and end users to create 3D furniture models interactively using basic drawing tools, exact dimensions, extrusion, movement, rotation, snapping and material application.
+The application should be developed primarily using the MERN Stack, with a suitable WebGL-based 3D framework such as Three.js / React Three Fiber for the 3D modelling engine.
+The focus of this hackathon is the 3D modelling and editing experience.
+Existing cut-list calculation logic can later be integrated with the resulting 3D geometry.
+
+1. PROBLEM STATEMENT
+Most professional 3D modelling applications require specialized desktop software and significant training.
+Furniture manufacturers and carpenters often require only a smaller subset of those features, such as:
+Drawing panels
+Creating boxes
+Entering exact dimensions
+Moving objects
+Rotating objects
+Copying objects
+Snapping components
+Creating cabinets
+Creating shelves
+Creating drawers
+Applying materials
+Viewing the model from different angles
+Generating accurate geometry
+The challenge is to develop a lightweight, browser-based 3D furniture modeller that provides these capabilities through an easy-to-use interface.
+
+2. EXPECTED END PRODUCT
+Participants should develop a web application where a user can:
+Create a new 3D project.
+View an empty 3D workspace/grid.
+Draw basic 2D geometry.
+Convert 2D geometry into 3D geometry.
+Enter exact measurements.
+Select objects or faces.
+Move objects.
+Rotate objects.
+Scale objects.
+Duplicate objects.
+Delete objects.
+Group multiple objects.
+Snap objects accurately.
+Apply furniture materials.
+Orbit around the model.
+Zoom and pan.
+Switch between standard camera views.
+Save the project.
+Open saved projects.
+Continue editing previously created models.
+
+3. SAMPLE USER WORKFLOW
+Example:
+A user wants to create a cabinet.
+Step 1
+Create a rectangle:
+Width: 600 mm
+Height: 2100 mm
+Step 2
+Use Push/Pull:
+Thickness: 18 mm
+The system creates an 18 mm furniture board.
+Step 3
+Duplicate the board.
+Step 4
+Move the duplicated board to create the right-side panel.
+Step 5
+Create:
+Top panel
+Bottom panel
+Shelf
+Divider
+Doors
+Step 6
+Snap the components to one another.
+Step 7
+Apply plywood or laminate material.
+Step 8
+Rotate the camera to view the completed cabinet.
+
+4. CORE 3D MODELLING TOOLS
+4.1 Select Tool
+The user should be able to click and select:
+Object
+Group
+Face
+Edge
+Selected objects should be visually highlighted.
+
+4.2 Line Tool
+Allow users to draw lines within the 3D workspace.
+Possible usage:
+Point A
+   \
+    \
+     \
+      Point B
+The line should use real-world measurements.
+
+4.3 Rectangle Tool
+The user should be able to draw a rectangular surface.
+Example:
+1200 mm × 600 mm
+The dimension can either be:
+entered before drawing, or
+edited after drawing.
+
+4.4 Push/Pull Tool
+Similar to SketchUp Push/Pull.
+Example:
+2D Face
+┌──────────────┐
+│              │
+└──────────────┘
+
+      ↓ Push/Pull 18 mm
+
+3D Board
+
+     ┌──────────────┐
+    /              /|
+   /______________/ |
+   |              | |
+   |              | /
+   |______________|/
+This is one of the most important features of the challenge.
+
+4.5 Move Tool
+Users must be able to move an object along:
+X Axis
+Y Axis
+Z Axis
+Exact displacement should be supported.
+Example:
+Move X = 500 mm
+Move Y = 0
+Move Z = 800 mm
+
+4.6 Rotate Tool
+Allow objects to rotate around:
+X
+Y
+Z
+Example:
+90°
+45°
+180°
+
+4.7 Scale / Resize Tool
+Users should be able to resize objects using:
+Drag handles
+Property input
+Example:
+Width     600 mm
+Height   2100 mm
+Depth      18 mm
+
+4.8 Duplicate / Copy Tool
+Users should be able to duplicate selected components.
+Example:
+Left Side Panel
+      ↓ COPY
+Right Side Panel
+Keyboard shortcuts are encouraged.
+Example:
+Ctrl + C
+Ctrl + V
+Ctrl + D
+
+4.9 Delete Tool
+Selected components should be removable using:
+Delete
+Backspace
+
+4.10 Group / Ungroup
+Multiple pieces should be grouped.
+Example:
+Wardrobe
+│
+├── Left Side
+├── Right Side
+├── Top
+├── Bottom
+├── Shelf 1
+├── Shelf 2
+└── Doors
+Moving the wardrobe should move all grouped components.
+
+5. SNAP ENGINE
+Snapping is a critical requirement.
+The application should identify:
+Endpoint
+Midpoint
+Edge
+Face
+Center
+Intersection
+Grid Point
+Example:
+Panel A                     Panel B
+
+┌─────────────┐      →     ┌─────────────┐
+│             │            │             │
+└─────────────●------------●─────────────┘
+              SNAP
+The cursor should visually indicate when snapping occurs.
+
+6. AXIS CONSTRAINTS
+The system should use a conventional three-axis coordinate system.
+                Z
+                ↑
+                │
+                │
+                │
+                ●──────────→ X
+               /
+              /
+             /
+            Y
+Movement should be constrainable to an individual axis.
+
+7. GRID SYSTEM
+Provide a workspace grid.
+Recommended:
+Major Grid: 100 mm
+Minor Grid: 10 mm
+The grid should help maintain dimensional accuracy.
+Grid spacing may be configurable.
+
+8. CAMERA CONTROLS
+The application must provide:
+Orbit
+Rotate the camera around the model.
+Pan
+Move the camera horizontally or vertically.
+Zoom
+Move closer/further from the model.
+Mouse controls can follow common CAD conventions.
+
+9. STANDARD CAMERA VIEWS
+Provide buttons for:
+Front
+Back
+Left
+Right
+Top
+Bottom
+Isometric
+Perspective
+Example:
+[ FRONT ] [ TOP ] [ LEFT ] [ RIGHT ] [ ISO ]
+
+10. OBJECT PROPERTIES PANEL
+Selecting an object should display its properties.
+Example:
+OBJECT PROPERTIES
+
+Name
+Side Panel
+
+Position
+X: 0
+Y: 0
+Z: 0
+
+Dimensions
+Width:      600 mm
+Height:    2100 mm
+Thickness:   18 mm
+
+Rotation
+X: 0°
+Y: 0°
+Z: 0°
+Editing the values should update the 3D model.
+
+11. COMPONENT TREE
+Provide a hierarchy panel.
+Example:
+PROJECT
+
+Living Room
+│
+├── TV Unit
+│   ├── Side Panel L
+│   ├── Side Panel R
+│   ├── Shelf 1
+│   └── Door
+│
+└── Study Table
+    ├── Top
+    ├── Left Leg
+    └── Right Leg
+Users should be able to select components from this tree.
+
+12. MATERIAL SYSTEM
+Users should be able to apply materials to surfaces.
+Example materials:
+Plywood
+MDF
+Particle Board
+Laminate
+Wood
+Glass
+Metal
+Optional advanced materials:
+Oak
+Walnut
+Teak
+White Laminate
+Black Laminate
+Marble
+Granite
+
+13. UNDO / REDO SYSTEM
+Every major modelling operation should support:
+Undo
+Redo
+Recommended shortcuts:
+Ctrl + Z
+Ctrl + Y
+The system should maintain an action history.
+
+14. PROJECT MANAGEMENT
+Users should be able to:
+Create Project
+Save Project
+Open Project
+Rename Project
+Duplicate Project
+Delete Project
+Project geometry should be saved so that editing can continue later.
+
+15. AUTOSAVE
+Optional but highly recommended.
+Example:
+Autosave every 30 seconds
+or
+Autosave after geometry modification
+
+16. MEASUREMENT SYSTEM
+All dimensions should use real-world units.
+Primary unit:
+Millimetres – mm
+Optional:
+Centimetres
+Metres
+Inches
+Feet
+Internally it is recommended to store measurements consistently using a standardized unit.
+
+17. DIMENSION TOOL
+Allow users to measure between two points.
+Example:
+●────────────────────────●
+        1200 mm
+Dimensions should update if the geometry changes.
+
+18. FURNITURE BOARD CONCEPT
+Furniture boards should preferably be treated as individual objects.
+Example:
+{
+   id: "board_001",
+   name: "Left Side Panel",
+
+   dimensions: {
+      width: 600,
+      height: 2100,
+      thickness: 18
+   },
+
+   position: {
+      x: 0,
+      y: 0,
+      z: 0
+   },
+
+   rotation: {
+      x: 0,
+      y: 0,
+      z: 0
+   },
+
+   material: "White Laminate"
+}
+This structure will later make integration with the existing cut-list system easier.
+
+19. FURNITURE MODELLING EXAMPLE
+Participants should demonstrate at least one complete furniture model.
+Recommended example:
+Two-Door Wardrobe
+        ┌────────────────────┐
+       /                    /|
+      /____________________/ |
+      |          |         | |
+      |          |         | |
+      |----------|---------| |
+      |          |         | |
+      |          |         | |
+      |----------|---------| |
+      |          |         | /
+      |__________|_________|/
+Required components:
+Left Side
+Right Side
+Top
+Bottom
+Middle Divider
+Shelves
+Doors
+
+20. USER INTERFACE REQUIREMENT
+The interface can follow a professional CAD-style layout.
+┌─────────────────────────────────────────────────────────────┐
+│ File  Edit  View  Camera  Tools                Save Project │
+├──────┬──────────────────────────────────────────┬───────────┤
+│      │                                          │           │
+│TOOLS │                                          │PROPERTIES │
+│      │                                          │           │
+│Select│                                          │Position   │
+│Line  │              3D WORKSPACE                │Rotation   │
+│Rect  │                                          │Size       │
+│Push  │                                          │Material   │
+│Move  │                                          │           │
+│Rotate│                                          │           │
+│Scale │                                          │           │
+│      │                                          │           │
+├──────┴──────────────────────────────────────────┴───────────┤
+│ Object Tree                   X:120 Y:500 Z:900             │
+└─────────────────────────────────────────────────────────────┘
+The UI should preferably be:
+Professional
+Minimal
+Responsive
+Desktop optimized
+Suitable for large modelling workspaces
+
+21. TECHNICAL REQUIREMENTS
+Frontend
+Recommended:
+React.js
+Three.js
+React Three Fiber
+@react-three/drei
+Zustand / Redux Toolkit
+Tailwind CSS / Material UI
+Participants may use alternative compatible libraries where justified.
+
+22. THREE.JS RESPONSIBILITIES
+Three.js / React Three Fiber should handle:
+3D Scene
+Camera
+Geometry
+Meshes
+Materials
+Lighting
+Raycasting
+Object Selection
+Transform Controls
+Orbit Controls
+Grid
+Textures
+Rendering
+
+23. BACKEND
+Recommended:
+Node.js
+Express.js
+Responsibilities:
+Authentication
+Project Management
+Project Saving
+Project Loading
+Component Library
+Material Library
+User Management
+Version Management
+Export Services
+
+24. DATABASE
+Recommended:
+MongoDB
+Possible collections:
+users
+projects
+scenes
+objects
+components
+materials
+textures
+versions
+settings
+
+25. END-TO-END ARCHITECTURE
+                        USER
+                          │
+                          ▼
+              ┌──────────────────────┐
+              │     WEB BROWSER      │
+              └──────────┬───────────┘
+                         │
+                         ▼
+         ┌────────────────────────────────┐
+         │         REACT FRONTEND         │
+         │                                │
+         │  Toolbar      Properties       │
+         │  Object Tree  Material Panel   │
+         │  Project UI   Measurements     │
+         └───────────────┬────────────────┘
+                         │
+                         ▼
+         ┌────────────────────────────────┐
+         │       3D EDITOR ENGINE         │
+         │                                │
+         │ Three.js / React Three Fiber   │
+         │                                │
+         │ Scene                          │
+         │ Camera                         │
+         │ Geometry                       │
+         │ Raycasting                     │
+         │ Transform Controls             │
+         │ Snapping                       │
+         │ Materials                      │
+         │ Grid                           │
+         │ Measurements                   │
+         └───────────────┬────────────────┘
+                         │
+              JSON / REST / WebSocket
+                         │
+                         ▼
+         ┌────────────────────────────────┐
+         │       NODE + EXPRESS API       │
+         │                                │
+         │ Authentication                 │
+         │ Project Service                │
+         │ Scene Service                  │
+         │ Component Service              │
+         │ Material Service               │
+         │ Version Service                │
+         └───────────────┬────────────────┘
+                         │
+                         ▼
+                  ┌──────────────┐
+                  │   MongoDB    │
+                  ├──────────────┤
+                  │ Users        │
+                  │ Projects     │
+                  │ Scene JSON   │
+                  │ Components   │
+                  │ Materials    │
+                  │ Versions     │
+                  └──────┬───────┘
+                         │
+                         ▼
+             FUTURE INTEGRATION LAYER
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+      CUT LIST          BOM         QUOTATION
+       ENGINE         ENGINE          ENGINE
+
+26. 3D EDITOR INTERNAL ARCHITECTURE
+                    3D EDITOR
+                       │
+       ┌───────────────┼────────────────┐
+       │               │                │
+       ▼               ▼                ▼
+   TOOL ENGINE     SCENE ENGINE     UI STATE
+       │               │                │
+       │               │                │
+ ┌─────┴─────┐    ┌────┴─────┐      Zustand/
+ │ Select    │    │ Scene    │       Redux
+ │ Line      │    │ Camera   │
+ │ Rectangle │    │ Meshes   │
+ │ Push/Pull │    │ Lights   │
+ │ Move      │    │ Grid     │
+ │ Rotate    │    └────┬─────┘
+ │ Scale     │         │
+ │ Measure   │         │
+ └─────┬─────┘         │
+       │               │
+       └───────┬───────┘
+               ▼
+         GEOMETRY ENGINE
+               │
+       ┌───────┼─────────┐
+       │       │         │
+       ▼       ▼         ▼
+      Faces   Edges   Vertices
+               │
+               ▼
+          SNAP ENGINE
+               │
+       ┌───────┼──────────┐
+       ▼       ▼          ▼
+   Endpoint  Midpoint    Face
+
+27. FRONTEND MODULE ARCHITECTURE
+Recommended project structure:
+frontend/
+
+src/
+│
+├── editor/
+│   ├── EditorCanvas.jsx
+│   ├── Scene.jsx
+│   ├── Camera.jsx
+│   ├── Grid.jsx
+│   ├── Lighting.jsx
+│   └── Renderer.jsx
+│
+├── tools/
+│   ├── SelectTool.js
+│   ├── LineTool.js
+│   ├── RectangleTool.js
+│   ├── PushPullTool.js
+│   ├── MoveTool.js
+│   ├── RotateTool.js
+│   ├── ScaleTool.js
+│   └── MeasureTool.js
+│
+├── engines/
+│   ├── GeometryEngine.js
+│   ├── SnapEngine.js
+│   ├── SelectionEngine.js
+│   ├── TransformEngine.js
+│   └── HistoryEngine.js
+│
+├── panels/
+│   ├── Toolbar.jsx
+│   ├── Properties.jsx
+│   ├── ObjectTree.jsx
+│   ├── Materials.jsx
+│   └── Layers.jsx
+│
+├── objects/
+│   ├── Board.jsx
+│   ├── Group.jsx
+│   └── Component.jsx
+│
+├── stores/
+│   ├── editorStore.js
+│   ├── projectStore.js
+│   └── selectionStore.js
+│
+└── services/
+    ├── projectApi.js
+    └── materialApi.js
+
+28. BACKEND MODULE ARCHITECTURE
+backend/
+
+src/
+│
+├── controllers/
+│   ├── auth.controller.js
+│   ├── project.controller.js
+│   ├── material.controller.js
+│   └── component.controller.js
+│
+├── services/
+│   ├── project.service.js
+│   ├── scene.service.js
+│   └── version.service.js
+│
+├── models/
+│   ├── User.js
+│   ├── Project.js
+│   ├── Material.js
+│   └── Component.js
+│
+├── routes/
+│   ├── auth.routes.js
+│   ├── project.routes.js
+│   └── material.routes.js
+│
+└── middleware/
+    ├── auth.js
+    └── errorHandler.js
+
+29. PROJECT DATA FORMAT
+A project may be stored as:
+Project
+│
+├── Project Information
+│
+├── Scene
+│   ├── Camera
+│   ├── Grid
+│   └── Environment
+│
+└── Objects
+    ├── Board 001
+    ├── Board 002
+    ├── Shelf 001
+    ├── Door 001
+    └── Group 001
+
+30. MANDATORY FEATURES
+For minimum hackathon qualification, teams should implement:
+React-based application.
+Three.js-based 3D workspace.
+Orbit, zoom and pan.
+Grid.
+Rectangle creation.
+3D box/board creation.
+Exact dimensions.
+Object selection.
+Move.
+Rotate.
+Resize.
+Duplicate.
+Delete.
+Basic snapping.
+Material application.
+Front/top/isometric camera views.
+Project save.
+Project reopen.
+MongoDB persistence.
+Demonstration furniture model.
+
+31. ADVANCED BONUS FEATURES
+Additional marks can be awarded for:
+SketchUp-style Push/Pull
+Line-to-face generation
+Vertex editing
+Edge editing
+Advanced snapping
+Collision detection
+Object alignment
+Mirror command
+Array duplication
+Keyboard shortcuts
+Touchscreen support
+Layers
+Component library
+Furniture templates
+GLTF/GLB export
+OBJ export
+STL export
+DXF integration
+Realistic textures
+Environment lighting
+Shadow rendering
+Undo history
+Project versioning
+Autosave
+AI-generated furniture
+Voice-based modelling commands
+
+32. OPTIONAL AI CHALLENGE
+Participants may add AI-assisted modelling.
+Example command:
+Create a wardrobe:
+
+Width: 2400 mm
+Height: 2100 mm
+Depth: 600 mm
+
+4 shutters
+2 drawers
+5 shelves
+1 central divider
+The software should interpret the requirements and create the initial model.
+
+33. FUTURE SYSTEM WORKFLOW
+The final commercial system is expected to evolve toward:
+3D DESIGN
+     │
+     ▼
+OBJECT GEOMETRY
+     │
+     ▼
+BOARD IDENTIFICATION
+     │
+     ▼
+CUT LIST
+     │
+     ▼
+BILL OF MATERIAL
+     │
+     ▼
+MATERIAL CALCULATION
+     │
+     ▼
+COST CALCULATION
+     │
+     ▼
+CUSTOMER QUOTATION
+     │
+     ▼
+CARPENTER PRODUCTION SHEET
+The hackathon teams are primarily responsible for:
+3D DESIGN
++
+OBJECT GEOMETRY
++
+PROJECT MANAGEMENT
+
+34. EXPECTED DEMONSTRATION
+During final evaluation, the team should demonstrate:
+Scenario
+Create a simple wardrobe completely inside the application.
+The team should:
+Open a blank project.
+Create a side panel.
+Enter exact dimensions.
+Push/Pull to 18 mm.
+Duplicate it.
+Move the duplicate.
+Create top and bottom panels.
+Create internal shelves.
+Snap the parts correctly.
+Rotate the camera.
+Apply material.
+Group the wardrobe.
+Save the project.
+Close/reload the application.
+Reopen the project.
+Continue editing.
+
+35. SUGGESTED EVALUATION CRITERIA
+Total:
+100 Marks
+
+36. TECHNICAL EXPECTATIONS
+The solution should demonstrate:
+Modular architecture
+Reusable components
+Clean source code
+Proper state management
+Separation between UI and 3D engine
+Separation between frontend and backend
+RESTful APIs
+Persistent project storage
+Accurate coordinate calculations
+Scalable project structure
+Error handling
+Git-based version control
+
+37. EXPECTED SOURCE CODE SUBMISSION
+Teams should submit:
+project/
+│
+├── frontend/
+│
+├── backend/
+│
+├── documentation/
+│
+├── screenshots/
+│
+├── README.md
+│
+└── architecture-diagram/
+README should include:
+Project overview
+Technology stack
+Installation steps
+Environment setup
+How to run frontend
+How to run backend
+Database configuration
+Major features
+Known limitations
+
+38. FINAL DELIVERABLE
+The expected hackathon outcome is a functional prototype of a:
+Browser-Based 3D Furniture CAD / Modelling Platform
+capable of providing a simplified SketchUp-style modelling experience specifically optimized for furniture and interior design.
+The prototype should prove that users can create dimensionally accurate furniture models inside a web browser without depending on desktop CAD software.
+The architecture should also make it possible to integrate the application's geometry with future modules such as:
+Cut List → BOM → Material Estimation → Pricing → Quotation → Manufacturing.
+Evaluation Area | Weightage
+3D Modelling Functionality | 25%
+User Experience & UI | 15%
+Geometry Accuracy | 15%
+Push/Pull / Editing Tools | 10%
+Snapping & Measurement | 10%
+Architecture & Code Quality | 10%
+Project Save/Load | 5%
+Innovation | 5%
+Final Demonstration | 5%

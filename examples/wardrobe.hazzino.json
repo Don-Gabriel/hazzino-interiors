@@ -1,0 +1,453 @@
+{
+  "schemaVersion": 1,
+  "id": "hazzino-wardrobe-demo",
+  "name": "Wardrobe · Hackathon demonstration",
+  "objects": [
+    {
+      "id": "0fa4ff87-8cb8-46d8-89ef-9b8af7871c9c",
+      "name": "Left side",
+      "kind": "box",
+      "position": [
+        -591,
+        0,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        600,
+        2100
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "54cdae16-6132-4e3e-927c-c9616b0c4704",
+      "name": "Right side",
+      "kind": "box",
+      "position": [
+        591,
+        0,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        600,
+        2100
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "c9409054-cc7c-4f31-9583-960c56770830",
+      "name": "Bottom",
+      "kind": "box",
+      "position": [
+        0,
+        0,
+        9
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1164,
+        600,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "60fc0254-ed70-4632-9247-6b0da43dd114",
+      "name": "Top",
+      "kind": "box",
+      "position": [
+        0,
+        0,
+        2091
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1164,
+        600,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "7b62a1d0-fea7-408c-8a70-6423d58b9ef2",
+      "name": "Back panel",
+      "kind": "box",
+      "position": [
+        0,
+        297,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1164,
+        6,
+        2064
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "e7b35936-6e48-445c-a615-c56628bcdb57",
+      "name": "Centre divider",
+      "kind": "box",
+      "position": [
+        0,
+        -6,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        576,
+        2064
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "38c9465c-2d5f-4797-b3ad-01681ce00610",
+      "name": "Left shelf 1",
+      "kind": "box",
+      "position": [
+        -295.5,
+        -9,
+        534
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "f35ed673-2f6f-4308-b2ae-a03d4d01635b",
+      "name": "Right shelf 1",
+      "kind": "box",
+      "position": [
+        295.5,
+        -9,
+        534
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "970df6e3-2127-48b0-bf2c-5b854fd8127d",
+      "name": "Left shelf 2",
+      "kind": "box",
+      "position": [
+        -295.5,
+        -9,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "53a4522e-f3e1-402f-98b0-799ec3d4c206",
+      "name": "Right shelf 2",
+      "kind": "box",
+      "position": [
+        295.5,
+        -9,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "dd93e5c7-f985-45da-b4db-75b96cebbaa3",
+      "name": "Left shelf 3",
+      "kind": "box",
+      "position": [
+        -295.5,
+        -9,
+        1566
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "00e62b96-75e9-4361-9315-646afaa2eb96",
+      "name": "Right shelf 3",
+      "kind": "box",
+      "position": [
+        295.5,
+        -9,
+        1566
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        570,
+        18
+      ],
+      "material": "oak",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "7e89288a-b2cf-490b-b037-c6b2e7a0d1e4",
+      "name": "Left door",
+      "kind": "box",
+      "position": [
+        -300,
+        -311,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        597,
+        18,
+        2096
+      ],
+      "material": "sage",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "6690865d-1262-4519-8477-1baa1b357050",
+      "name": "Left handle",
+      "kind": "box",
+      "position": [
+        -35,
+        -335,
+        1113
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        12,
+        28,
+        180
+      ],
+      "material": "metal",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "3764ed0a-8cd4-4300-a9b8-7d3f3295cb0d",
+      "name": "Right door",
+      "kind": "box",
+      "position": [
+        300,
+        -311,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        597,
+        18,
+        2096
+      ],
+      "material": "sage",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "02b75e63-a5b3-4013-9b2a-2e94c40c03fd",
+      "name": "Right handle",
+      "kind": "box",
+      "position": [
+        35,
+        -335,
+        1113
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        12,
+        28,
+        180
+      ],
+      "material": "metal",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "visible": true,
+      "locked": false
+    }
+  ],
+  "groups": [
+    {
+      "id": "ffcd8e82-c295-4592-854a-073fdc5adfd1",
+      "name": "Wardrobe"
+    }
+  ],
+  "layers": [
+    {
+      "id": "Furniture",
+      "visible": true
+    },
+    {
+      "id": "Architecture",
+      "visible": true
+    },
+    {
+      "id": "Annotations",
+      "visible": true
+    }
+  ],
+  "settings": {
+    "unit": "mm",
+    "grid": 100,
+    "snap": 10,
+    "currency": "INR",
+    "waste": 10
+  },
+  "views": [],
+  "createdAt": "2026-09-09T12:18:04.509Z",
+  "updatedAt": "2026-09-09T12:18:04.509Z"
+}

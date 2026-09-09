@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.data/
+.env
+*.log
+tmp/
+.claude-flow/
+.swarm/
+ruvector.db
+.openai/
+output/
