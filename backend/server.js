@@ -5,6 +5,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateProject, MATERIALS } from "../shared/model.js";
+import { aiRouter } from "./ai.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -15,6 +16,10 @@ app.use((req, res, next) => {
   next();
 });
 let db, client, mongo, dbError;
+app.use(
+  "/api/ai",
+  aiRouter(() => db, root),
+);
 app.get("/api/health", (_req, res) =>
   res.json({
     ok: !!db,
@@ -26,13 +31,10 @@ app.get("/api/health", (_req, res) =>
 app.use("/api", (req, res, next) => {
   if (req.path === "/materials") return next();
   if (!db)
-    return res
-      .status(503)
-      .json({
-        error:
-          dbError ||
-          "MongoDB is starting. Your browser keeps a local autosave.",
-      });
+    return res.status(503).json({
+      error:
+        dbError || "MongoDB is starting. Your browser keeps a local autosave.",
+    });
   next();
 });
 app.get("/api/materials", (_req, res) => res.json(MATERIALS));

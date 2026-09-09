@@ -339,7 +339,12 @@ export function quantities(o) {
 }
 export function bom(project) {
   return project.objects
-    .filter((o) => !["line", "dimension"].includes(o.kind) && !o.isFace)
+    .filter(
+      (o) =>
+        !["line", "dimension"].includes(o.kind) &&
+        !o.isFace &&
+        !o.medicalEquipment,
+    )
     .map((o) => {
       const q = quantities(o);
       const m = MATERIALS.find((m) => m.id === o.material) || MATERIALS[0];

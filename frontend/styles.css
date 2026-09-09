@@ -2023,3 +2023,96 @@ tbody tr:hover {
     max-width: 140px;
   }
 }
+
+.shortcut-section {
+  margin: 22px 0;
+}
+.shortcut-section .shortcut-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 12px 0;
+}
+.shortcut-section .shortcut-grid > div {
+  font-size: 11px;
+  align-items: flex-start;
+}
+.shortcut-section kbd {
+  min-width: 135px;
+  white-space: normal;
+  font-size: 10px;
+}
+.shortcut-section h3 {
+  font-size: 11px;
+  color: #597147;
+}
+.menubar .dropdown-wrap > button {
+  padding: 7px 8px;
+  font-size: 10px;
+}
+@media (max-width: 720px) {
+  .drawing-controls {
+    display: flex;
+    position: absolute;
+    right: 0;
+    bottom: 43px;
+  }
+  .drawing-controls .axis-buttons,
+  .drawing-controls .snap-chip {
+    display: none;
+  }
+}
+.hospital-panel {
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+  max-height: 72vh;
+  overflow: auto;
+}
+.hospital-panel textarea {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: #f7f8f4;
+  border: 1px solid #c7d0c4;
+  border-radius: 8px;
+  color: #223326;
+  font: inherit;
+  resize: vertical;
+}
+.hospital-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hospital-panel button {
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid #bcc8b6;
+}
+.ai-result {
+  background: #f4f6f0;
+  border: 1px solid #d4dccd;
+  border-radius: 8px;
+  padding: 14px;
+}
+.ai-result p {
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.ai-error {
+  color: #a3322a;
+}
+.ai-connection {
+  font-size: 12px;
+  color: #536848;
+}
+.ai-launch {
+  color: #46713b !important;
+  font-weight: 700 !important;
+}
+@media (max-width: 950px) {
+  .drawing-controls {
+    display: flex !important;
+  }
+}

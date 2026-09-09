@@ -61,6 +61,7 @@ import {
   validateProject,
 } from "../shared/model.js";
 import { Dialogs } from "./Dialogs.jsx";
+import { handleShortcut } from "./shortcuts.js";
 export const toolList = [
   ["select", MousePointer2, "Select", "V"],
   ["line", PenLine, "Line", "L"],
@@ -107,6 +108,11 @@ export function Numeric({ label, value, onChange, step = 1, min, unit }) {
         onBlur={submit}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            setDraft(String(value));
+          }
         }}
       />
       {unit && <small>{unit}</small>}
@@ -143,6 +149,7 @@ function Viewport() {
 export default function App() {
   const s = useEditor(),
     [fileMenu, setFileMenu] = useState(false),
+    [editMenu, setEditMenu] = useState(false),
     [viewMenu, setViewMenu] = useState(false),
     [nameEdit, setNameEdit] = useState(false),
     [treeSearch, setTreeSearch] = useState("");
@@ -160,58 +167,23 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    const key = (e) => {
-      if (
-        ["INPUT", "TEXTAREA", "SELECT"].includes(
-          document.activeElement?.tagName,
-        )
-      )
-        return;
-      const a = useEditor.getState(),
-        k = e.key.toLowerCase();
-      if (e.ctrlKey || e.metaKey) {
-        if (["s", "z", "y", "d", "g", "a", "k", "c", "v"].includes(k))
-          e.preventDefault();
-        if (k === "s") a.save();
-        if (k === "z") e.shiftKey ? a.redo() : a.undo();
-        if (k === "y") a.redo();
-        if (k === "d") a.duplicate();
-        if (k === "g") e.shiftKey ? a.ungroup() : a.group();
-        if (k === "a")
-          a.set({
-            selection: a.project.objects
-              .filter((o) => o.visible && !o.locked)
-              .map((o) => o.id),
-          });
-        if (k === "k") a.set({ modal: "commands" });
-        if (k === "c")
-          window.hazzinoClipboard = clone(
-            a.project.objects.filter((o) => a.selection.includes(o.id)),
+    const key = (e) =>
+      handleShortcut(e, {
+        closeMenus: () => {
+          setFileMenu(false);
+          setEditMenu(false);
+          setViewMenu(false);
+        },
+        rename: () => {
+          const input = document.querySelector(
+            'input[aria-label="Object name"]',
           );
-        if (k === "v" && window.hazzinoClipboard)
-          a.add(
-            window.hazzinoClipboard.map((o) => ({
-              ...clone(o),
-              id: uid(),
-              groupId: null,
-              position: o.position.map((n, i) => n + (i === 0 ? 100 : 0)),
-            })),
-          );
-        return;
-      }
-      if (e.key === "Escape") {
-        a.engine?.cancelDraw();
-        a.set({ tool: "select", modal: null, axis: null });
-        setFileMenu(false);
-      }
-      if (["Delete", "Backspace"].includes(e.key)) a.remove();
-      if (e.key === "Enter") a.engine?.finishPolygon();
-      const t = toolList.find((t) => t[3].toLowerCase() === k);
-      if (t && !e.altKey) a.set({ tool: t[0] });
-      if (k === "f") a.engine?.fit();
-      if (["x", "y", "z"].includes(k))
-        a.set({ axis: a.axis === k.toUpperCase() ? null : k.toUpperCase() });
-    };
+          if (input && !input.disabled) {
+            input.focus();
+            input.select();
+          } else setNameEdit(true);
+        },
+      });
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
@@ -319,8 +291,44 @@ export default function App() {
             </div>
           )}
         </div>
+        <div className="dropdown-wrap">
+          <button onClick={() => setEditMenu(!editMenu)}>
+            Edit <ChevronDown size={12} />
+          </button>
+          {editMenu && (
+            <div className="dropdown">
+              {[
+                ["Cut", "Ctrl X", s.cut],
+                ["Copy", "Ctrl C", s.copy],
+                ["Paste", "Ctrl V", () => s.paste()],
+                ["Paste in place", "Ctrl Shift V", () => s.paste(true)],
+                ["Undo", "Ctrl Z", s.undo],
+                ["Redo", "Ctrl Y", s.redo],
+              ].map(([name, key, action]) => (
+                <button
+                  key={name}
+                  onClick={() => {
+                    action();
+                    setEditMenu(false);
+                  }}
+                >
+                  {name}
+                  <small style={{ marginLeft: "auto", color: "#889b7a" }}>
+                    {key}
+                  </small>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={() => s.set({ modal: "projects" })}>Projects</button>
         <button onClick={() => s.set({ modal: "export" })}>Export</button>
+        <button
+          className="ai-launch"
+          onClick={() => s.set({ modal: "hospital" })}
+        >
+          AI Hospital
+        </button>
         <button onClick={() => s.set({ modal: "help" })}>Help</button>
         <div className="toolbar-divider" />
         <IconButton
@@ -714,7 +722,9 @@ export default function App() {
         <span className="status-tool">
           {toolList.find((t) => t[0] === s.tool)?.[2]}
         </span>
-        <span className="status-message">{s.status}</span>
+        <span className="status-message" role="status" aria-live="polite">
+          {s.status}
+        </span>
         <div className="top-spacer" />
         {s.cursor && (
           <span className="coordinates">
@@ -1027,7 +1037,9 @@ function Properties() {
           <button
             className="primary"
             aria-label="Apply push pull"
-            disabled={chosen.every(item=>!['box','profile'].includes(item.kind))}
+            disabled={chosen.every(
+              (item) => !["box", "profile"].includes(item.kind),
+            )}
             onClick={() => s.engine?.extrude(pull)}
           >
             <ArrowUpFromLine size={16} />

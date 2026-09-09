@@ -63,6 +63,122 @@ export const useEditor = create((set, get) => ({
   cursor: null,
   engine: null,
   dirty: false,
+  clipboard: null,
+  copy: () => {
+    const s = get(),
+      objects = s.project.objects.filter((o) => s.selection.includes(o.id));
+    if (!objects.length) {
+      s.notify("Select objects to copy");
+      return;
+    }
+    set({
+      clipboard: {
+        objects: clone(objects),
+        groups: clone(
+          s.project.groups.filter((g) =>
+            objects.some((o) => o.groupId === g.id),
+          ),
+        ),
+        layers: clone(s.project.layers),
+        sourceId: s.project.id,
+        cut: false,
+        pasteCount: 0,
+      },
+      status: "Copied " + objects.length + " objects",
+    });
+  },
+  cut: () => {
+    const s = get(),
+      objects = s.project.objects.filter(
+        (o) => s.selection.includes(o.id) && !o.locked,
+      );
+    if (!objects.length) {
+      s.notify("Select unlocked objects to cut");
+      return;
+    }
+    set({
+      clipboard: {
+        objects: clone(objects),
+        groups: clone(
+          s.project.groups.filter((g) =>
+            objects.some((o) => o.groupId === g.id),
+          ),
+        ),
+        layers: clone(s.project.layers),
+        sourceId: s.project.id,
+        cut: true,
+        pasteCount: 0,
+      },
+    });
+    s.commit("Cut " + objects.length + " objects", (p) => {
+      p.objects = p.objects.filter((o) => !objects.some((v) => v.id === o.id));
+      p.groups = p.groups.filter((g) =>
+        p.objects.some((o) => o.groupId === g.id),
+      );
+    });
+    set({ selection: [], face: null });
+  },
+  paste: (inPlace = false) => {
+    const s = get(),
+      c = s.clipboard;
+    if (!c?.objects.length) {
+      s.notify("Copy or cut objects first");
+      return;
+    }
+    const objectIds = new Map(c.objects.map((o) => [o.id, uid()])),
+      groupIds = new Map(c.groups.map((g) => [g.id, uid()]));
+    const offset = inPlace || c.cut ? 0 : 100 * (c.pasteCount + 1);
+    const objects = c.objects.map((o) => ({
+      ...clone(o),
+      id: objectIds.get(o.id),
+      groupId: groupIds.get(o.groupId) || null,
+      position: o.position.map((v, i) => v + (i === 0 ? offset : 0)),
+      ...(o.anchors
+        ? {
+            anchors: o.anchors.map((a) =>
+              a && objectIds.has(a.id)
+                ? { ...a, id: objectIds.get(a.id) }
+                : c.sourceId === s.project.id &&
+                    s.project.objects.some((o) => o.id === a?.id)
+                  ? a
+                  : null,
+            ),
+          }
+        : {}),
+    }));
+    s.commit(inPlace ? "Paste in place" : "Paste objects", (p) => {
+      for (const l of c.layers)
+        if (!p.layers.some((v) => v.id === l.id)) p.layers.push(l);
+      p.groups.push(...c.groups.map((g) => ({ ...g, id: groupIds.get(g.id) })));
+      p.objects.push(...objects);
+    });
+    set({
+      selection: objects.map((o) => o.id),
+      face: null,
+      tool: "select",
+      clipboard: { ...c, cut: false, pasteCount: c.pasteCount + 1 },
+    });
+  },
+  nudge: (axis, amount) => {
+    const s = get();
+    if (!s.selection.length) {
+      s.notify("Select objects to nudge");
+      return;
+    }
+    s.commit("Nudge " + "XYZ"[axis] + " " + amount + " mm", (p) =>
+      p.objects
+        .filter((o) => s.selection.includes(o.id) && !o.locked)
+        .forEach((o) => (o.position[axis] += amount)),
+    );
+  },
+  saveCopy: async () => {
+    const s = get(),
+      p = clone(s.project);
+    p.id = uid();
+    p.name += " copy";
+    s.load(p);
+    return get().save();
+  },
   set: (v) => set(v),
   notify: (status) => set({ status }),
   commit: (label, mutate) => {
@@ -243,6 +359,7 @@ export const useEditor = create((set, get) => ({
         dirty: false,
         modal: null,
         status: "Opened " + project.name,
+        saveStatus: "Local recovery ready",
       });
       get().recover();
       setTimeout(() => get().engine?.fit(), 100);

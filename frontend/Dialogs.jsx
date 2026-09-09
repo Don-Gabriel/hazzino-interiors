@@ -34,6 +34,8 @@ import {
 import { Numeric, IconButton, libraryItems, toolList } from "./App.jsx";
 import { alignObjects, healthCheck } from "../shared/geometry.js";
 import { quotationHTML, planSVG } from "../shared/reports.js";
+import { shortcutGroups } from "./shortcuts.js";
+import { Hospital } from "./Hospital.jsx";
 export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   return (
     <div
@@ -59,6 +61,7 @@ export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   );
 }
 export function Dialogs({ kind, close }) {
+  if (kind === "hospital") return <Hospital close={close} />;
   if (kind === "health") return <HealthDialog close={close} />;
   if (kind === "opening") return <OpeningDialog close={close} />;
   if (kind === "projects") return <Projects close={close} />;
@@ -71,6 +74,7 @@ export function Dialogs({ kind, close }) {
   return <UtilityDialog kind={kind} close={close} />;
 }
 function OpeningDialog({ close }) {
+  const [error, setError] = useState("");
   const s = useEditor(),
     o = s.project.objects.find((o) => s.selection.includes(o.id)),
     [v, setV] = useState({
@@ -138,6 +142,11 @@ function OpeningDialog({ close }) {
           Openings must fit inside the wall and must not overlap. Geometry and
           quantities are reduced together.
         </p>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
         {o.openings?.map((a, i) => (
           <div className="version-row" key={a.id}>
             <Scissors size={15} />
@@ -175,6 +184,7 @@ function OpeningDialog({ close }) {
             );
             if (useEditor.getState().status === "Cut rectangular opening")
               close();
+            else setError(useEditor.getState().status);
           }}
         >
           Cut opening <Scissors size={15} />
@@ -593,22 +603,19 @@ function UtilityDialog({ kind, close }) {
                 design.
               </li>
             </ol>
-            <div className="shortcut-grid">
-              {[
-                ...toolList.map((t) => [t[3], t[2]]),
-                ["F", "Fit model"],
-                ["X / Y / Z", "Axis constraint"],
-                ["Ctrl D", "Duplicate"],
-                ["Ctrl Z / Y", "Undo / redo"],
-                ["Ctrl S", "Save"],
-                ["Esc", "Cancel tool"],
-              ].map(([k, l]) => (
-                <div key={k}>
-                  <kbd>{k}</kbd>
-                  <span>{l}</span>
+            {shortcutGroups.map((group) => (
+              <section key={group.name} className="shortcut-section">
+                <h3>{group.name}</h3>
+                <div className="shortcut-grid">
+                  {group.items.map(([key, label]) => (
+                    <div key={key}>
+                      <kbd>{key}</kbd>
+                      <span>{label}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </section>
+            ))}
             <p className="hint">
               Left drag orbits; right drag pans; wheel zooms. Close profiles by
               clicking the start or pressing Enter. Face and edge editing beyond
@@ -808,7 +815,7 @@ function Quantities({ close }) {
   return (
     <Dialog
       title="Quantities & material estimate"
-      subtitle="Live quantities from the actual model. Editable rates in object properties."
+      subtitle="Live quantities and editable rates. Medical equipment is excluded; obtain supplier quotations."
       onClose={close}
       wide
     >

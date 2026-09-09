@@ -60,3 +60,17 @@ All times are India Standard Time on 9 September 2026. This file records the bui
 43. Final HTTP checks returned 200 for both the Vite preview and compiled application endpoint. MongoDB health is true. The working tree was clean after the application commit.
 44. Recorded the build summary, server URLs, tests, artifacts and limitations in the existing Hazzino workspace memory.
 45. Finalized this log and refreshed the source bundle for handoff before 18:00 IST. The app remains running; README.md and documentation/FEATURE-COVERAGE.md distinguish delivered features from future CAD/BIM work.
+
+## 18:00–18:18 IST — keyboard verification and hospital extension
+46. Implemented centralized keyboard routing, editable-text safeguards, model cut/copy/paste, function keys, numpad camera controls, and an Edit menu. Added five shortcut tests.
+47. Browser-tested exact 18 mm extrusion, numeric resizing, walnut material, duplicate/undo/redo, grouping, nudging, physical numpad view changes and shortcut help. Verified clipboard operations through the Edit menu; browser automation intercepts native clipboard chords, so those physical chords remain a manual check.
+48. Fixed stale save status after project loading, visible validation errors, narrow-viewport camera fitting and drawing-plane controls.
+49. Read the user's hospital brief. Accepted the revised hard stop of 18:20 IST. Bounded hospital generation to editable patient rooms and wards, beds, cabinets and IV stands.
+50. Added server-side Gemini structured-plan generation, safe environment-file loading on each request, input/schema checks, quota messages, one-request concurrency, six starts/minute and a 45-second timeout. Created .env without overwriting an existing file.
+51. Added semantic hospital assemblies, deterministic layout/reflow, room bounds, bounding-box collision, central strip obstruction and floor/ceiling checks. Corrected the assembly-bounds aggregation during testing.
+52. Added AI preview/apply workflow, current-layout validation, downloadable reports and token usage ledger. Corrected report download argument order. Medical equipment is excluded from generic board-cost estimates and labeled accordingly.
+53. Checked official Gemini pricing/token documentation. Wrote documentation/JURY-DEMO.md with demo steps, real scope, limitations, token accounting, free versus paid operation and production billing work still required.
+54. All 40 automated tests passed, including five new hospital/Gemini contract tests. Production compilation passed. Mock provider tests do not constitute live Gemini verification.
+55. Browser verified the 36-object local hospital template, successful geometry checks, clear missing-key error, applying the layout and saving it to MongoDB. The user API key was not present at verification; no live AI success is claimed.
+56. Final formatting triggered the development watcher while two API tests ran; those checks saw MongoDB starting. Rechecked health after startup and reran the complete suite: 40/40 passed. Production build passed.
+57. Finalized jury notes and source archive before the 18:20 IST hard stop. The app remains running locally; Gemini key entry is the remaining prerequisite for live provider verification.

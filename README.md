@@ -94,3 +94,6 @@ The initial room area is template metadata; independently editing room walls doe
 Material rates are editable planning assumptions. Estimates exclude labour, taxes, hardware, supplier pricing, optimized cutting/nesting and manufacturing validation. Collision checks compare bounding boxes and can report false positives on rotated or cut objects. Before fabrication, verify dimensions, clearances, hardware, edges and material specifications.
 
 WebMCP tools are feature-detected and use the same store actions. No supported browser WebMCP validation interface was available in this session, so browser registration and execution are not claimed as tested. No automated interactive browser walkthrough or screenshot comparison was performed; verification used compilation, live HTTP/API checks and executable geometry/state tests.
+
+## AI hospital extension
+See [the jury presentation and token/billing explanation](documentation/JURY-DEMO.md). Add `GEMINI_API_KEY` to the root `.env` and use **AI Hospital**. The file is reread on every AI request. A local hospital template is available independently. Medical equipment is excluded from board-cost estimates. Live Gemini testing requires your key; 40 automated tests currently pass.

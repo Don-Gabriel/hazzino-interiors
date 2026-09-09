@@ -901,10 +901,17 @@ export class EditorEngine {
     });
   }
 
-  fit() {
+  fit(selectionOnly = false) {
     const box = new T.Box3();
     this.model.children
-      .filter((m) => m.visible && !m.userData.label)
+      .filter(
+        (m) =>
+          m.visible &&
+          !m.userData.label &&
+          (!selectionOnly ||
+            !useEditor.getState().selection.length ||
+            useEditor.getState().selection.includes(m.userData.id)),
+      )
       .forEach((m) => box.expandByObject(m));
     if (box.isEmpty()) {
       box.min.set(-1000, -1000, 0);
@@ -912,20 +919,83 @@ export class EditorEngine {
     }
     const center = box.getCenter(new T.Vector3()),
       size = box.getSize(new T.Vector3());
-    const distance = Math.max(size.x, size.y, size.z, 1000) * 1.8;
     const direction = this.camera.position
       .clone()
       .sub(this.controls.target)
       .normalize();
+    const right = new T.Vector3()
+      .crossVectors(this.camera.up, direction)
+      .normalize();
+    const up = new T.Vector3().crossVectors(direction, right).normalize();
+    const half = size.clone().multiplyScalar(0.5);
+    const projected = (v) =>
+      Math.abs(v.x) * half.x + Math.abs(v.y) * half.y + Math.abs(v.z) * half.z;
+    const aspect = this.container.clientWidth / this.container.clientHeight;
+    const span =
+      Math.max(projected(up) * 2, (projected(right) * 2) / aspect, 100) * 1.18;
+    const distance = span / (2 * Math.tan(rad(21))) + projected(direction);
     this.controls.target.copy(center);
     this.camera.position.copy(
       center.clone().addScaledVector(direction, distance),
     );
     if (this.camera.isOrthographicCamera) {
-      this.orthoSpan = Math.max(size.x, size.y, size.z) * 1.5;
+      this.orthoSpan = span;
       this.resizeView();
     }
     this.controls.update();
+    useEditor
+      .getState()
+      .notify(selectionOnly ? "Framed selection" : "Fit complete model");
+  }
+  zoomStep(factor) {
+    if (this.camera.isOrthographicCamera) {
+      this.orthoSpan = Math.max(20, Math.min(150000, this.orthoSpan * factor));
+      this.resizeView();
+    } else {
+      const offset = this.camera.position
+        .clone()
+        .sub(this.controls.target)
+        .multiplyScalar(factor);
+      if (offset.length() > 20 && offset.length() < 150000)
+        this.camera.position.copy(this.controls.target.clone().add(offset));
+    }
+    this.controls.update();
+    useEditor.getState().notify(factor < 1 ? "Zoom in" : "Zoom out");
+  }
+  orbitStep(theta, phi) {
+    const toY = new T.Quaternion().setFromUnitVectors(
+        this.camera.up,
+        new T.Vector3(0, 1, 0),
+      ),
+      offset = this.camera.position
+        .clone()
+        .sub(this.controls.target)
+        .applyQuaternion(toY);
+    const spherical = new T.Spherical().setFromVector3(offset);
+    spherical.theta += theta;
+    spherical.phi = Math.max(
+      0.01,
+      Math.min(Math.PI - 0.01, spherical.phi + phi),
+    );
+    offset.setFromSpherical(spherical).applyQuaternion(toY.invert());
+    this.camera.position.copy(this.controls.target.clone().add(offset));
+    this.controls.update();
+    useEditor.getState().notify("Orbit camera");
+  }
+  toggleProjection() {
+    const position = this.camera.position.clone(),
+      target = this.controls.target.clone(),
+      up = this.camera.up.clone(),
+      ortho = this.camera.isPerspectiveCamera;
+    this.view(ortho ? "iso" : "perspective");
+    this.camera.position.copy(position);
+    this.camera.up.copy(up);
+    this.controls.target.copy(target);
+    this.resizeView();
+    this.controls.update();
+    useEditor
+      .getState()
+      .notify(ortho ? "Orthographic projection" : "Perspective projection");
   }
   view(name) {
     const center = this.controls.target.clone(),

@@ -35,3 +35,6 @@ The supplied DOCX is the product reference. The user's direct request sets the d
 | Vertex/edge editing, voice, DXF, cloud collaboration | Not included                                                          | Future work                                             |
 
 The built app covers the mandatory hackathon modelling and persistence list. This coverage does not imply equivalence with the full SketchUp ecosystem or completion of every optional bonus feature.
+
+## Hospital and keyboard extension — final scope
+See JURY-DEMO.md for the current feature matrix and token/billing explanation. Gemini prompt-to-plan integration, semantic patient-room generation, local geometric checks, deterministic reflow and token ledger are implemented. Live provider success has not been verified because no user key is configured. Medical equipment is excluded from board-cost estimates. Function/numpad shortcuts and model clipboard operations are implemented with native text-editing safeguards. 40 tests pass.

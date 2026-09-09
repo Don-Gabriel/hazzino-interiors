@@ -33,3 +33,6 @@ An automated interactive browser walkthrough, screenshots, and pixel/layout comp
 There was no supported browser WebMCP testing interface. Registration is feature-detected; browser execution remains unverified.
 
 No fabrication, structural, building-code, photorealistic-rendering, large-model performance or third-party CAD roundtrip certification is claimed. SVG is a box-footprint projection, and estimates use editable assumptions. See `FEATURE-COVERAGE.md` and the README for the full scope and limits.
+
+## 18:18 update
+40 tests pass. Actual browser checks now cover modeling, transforms, materials, shortcuts, WebMCP read/save, hospital template generation/apply and MongoDB saving. The browser supports WebMCP in this session, superseding earlier availability notes. Native clipboard chords are intercepted by browser automation; menu operations and shortcut routing tests pass. Live Gemini remains unverified without the user key. See JURY-DEMO.md for scope and billing details.
