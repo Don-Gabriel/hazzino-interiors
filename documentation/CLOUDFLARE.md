@@ -2,6 +2,14 @@
 
 The current Hazzino web app can run on Cloudflare Workers with Static Assets and SQLite-backed Durable Objects. The existing Express/MongoDB application remains available locally.
 
+## Published checkpoint — 10 September 2026
+
+- Live preview: [hazzino-interiors.fanatical-tennis.workers.dev](https://hazzino-interiors.fanatical-tennis.workers.dev).
+- Source commit: `7f81fa7427216f82d869a50b1d756baf94dcd2d4` on [GitHub](https://github.com/Don-Gabriel/hazzino-interiors).
+- Cloudflare version: `21a79af2-f602-4c3c-b83c-ac91de18ea00`.
+- All 56 existing tests and five Cloudflare integration tests passed locally. All five deployment tests also passed against this public URL. A browser save succeeded and no browser errors were reported.
+- Published using a temporary preview account at approximately 11:19 am IST. The owner was given the private Cloudflare claim link separately and must complete it within the provider's 60-minute claim window to keep the deployment. A completed claim has not yet been verified at this checkpoint.
+
 ## What works in the hosted build
 
 - The existing browser modelling engine, workspace, materials, scenes and exports.
