@@ -1048,6 +1048,16 @@ main:has(> .drawing-tool-options) .scene-caption {
   min-height: 0;
   overflow: auto;
 }
+.motion-warning {
+  padding: 10px;
+  margin: 0 0 10px;
+  color: #78441d;
+  background: #fff1d9;
+  border: 1px solid #dfc89b;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+}
 .furniture-preview {
   position: relative;
   min-height: 260px;

@@ -1,5 +1,18 @@
 # Furniture verification — 10 September 2026
 
+## Clearance correction
+
+- `npm test`: **100/100 passed**, including the original 91 checks and nine new clearance/manual-joint tests.
+- `npm run test:cloudflare`: **6/6 passed locally** after the correction. Public deployment verification is recorded in [CLOUDFLARE.md](CLOUDFLARE.md).
+- Production build passed after the final interface changes.
+- Motion tests cover all eight presets and three front styles at seven opening/closing fractions, rotated 37 degrees and translated away from the origin. They check physical panel/handle/leg intersections, unchanged dimensions and reversible closing.
+- Additional tests cover L/U kitchen obstructions; enclosed drawers requiring both doors; extended drawers blocking door closure; left/right sliding access and inaccessible centre drawers; 9/18/25/50 mm enclosed fronts and required reveal/spacers; manual boards and extruded faces with hinges and slides; independent copied joints and Undo; rejected shear transforms; 150 mm insertion spacing; and actual solid intersection around a hole.
+- Actual browser operation held an enclosed drawer at 0% with zero or one door open, extended it after both doors cleared, and blocked closing a door against the extended drawer. The complete audit of the 93-part corrected wardrobe reported no intersections or blocked opening paths.
+- Through the actual joint dialog, attached a front-left hinge to a manually created 300 × 18 × 600 mm panel and opened it 90 degrees. `read_design` confirmed unchanged dimensions, the expected pivot and rigid pose.
+- The browser rejected the inaccessible three-compartment sliding layout, disabled Add, and repaired it through **Use two sliding compartments**. Full opening then exposed the right drawers with the leaves stacked clear to the left.
+
+These checks establish the tested geometric behaviour, not full physical simulation or every possible furniture configuration. See [clearance coverage and manual construction](CLEARANCE-AND-MANUAL-BUILD.md), including conservative moving-mesh envelopes, reference-fitting exclusions and supplier/structural limits.
+
 ## Automated checks
 
 - `npm test`: 91 passing tests at the furniture release checkpoint, including rejection of malformed machining records before import/reporting.

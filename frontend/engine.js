@@ -30,6 +30,7 @@ import {
 } from "../shared/solid-kernel.js";
 import { TOOL_CURSORS } from "./tool-cursors.js";
 import { useEditor, download } from "./store.js";
+import { hasShear } from "../shared/assemblies.js";
 T.Object3D.DEFAULT_UP.set(0, 0, 1);
 const rad = (n) => (n * Math.PI) / 180,
   deg = (n) => (n * 180) / Math.PI;
@@ -633,6 +634,7 @@ export class EditorEngine {
   }
   beginTransform() {
     this.dragging = true;
+    this.invalidTransform = false;
     this.pivot.updateMatrixWorld();
     this.startPivot = this.pivot.matrixWorld.clone().invert();
     this.startObjects = useEditor.getState().selection.map((id) => {
@@ -651,15 +653,37 @@ export class EditorEngine {
     if (!this.dragging || !this.startObjects) return;
     this.pivot.updateMatrixWorld();
     const delta = this.pivot.matrixWorld.clone().multiply(this.startPivot);
-    for (const a of this.startObjects) {
+    const transforms = this.startObjects.map((a) =>
+      delta.clone().multiply(a.matrix),
+    );
+    const articulatedScale =
+      useEditor.getState().tool === "scale" &&
+      this.startObjects.length > 1 &&
+      this.startObjects.some((a) => a.object.mechanism);
+    this.invalidTransform = articulatedScale || transforms.some(hasShear);
+    for (const [index, a] of this.startObjects.entries()) {
       const m = this.objects.get(a.id);
-      const matrix = delta.clone().multiply(a.matrix);
+      const matrix = this.invalidTransform ? a.matrix : transforms[index];
       matrix.decompose(m.position, m.quaternion, m.scale);
     }
+    if (this.invalidTransform)
+      useEditor
+        .getState()
+        .set({
+          status: articulatedScale
+            ? "Use Edit furniture to resize jointed assemblies and preserve clearances. Resize manual boards individually before attaching joints."
+            : "This scale would shear rotated panels. Resize individual boards or use uniform scaling.",
+        });
   }
   endTransform() {
     if (!this.dragging) return;
     this.dragging = false;
+    if (this.invalidTransform) {
+      this.startObjects = null;
+      this.pivot.scale.set(1, 1, 1);
+      this.transform.axis = null;
+      return;
+    }
     const updates =
       this.startObjects?.map((a) => {
         const m = this.objects.get(a.id);

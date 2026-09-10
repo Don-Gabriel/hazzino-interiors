@@ -1,5 +1,6 @@
 import { entity, uid, clone } from "./model.js";
 import { Vector3, Euler, Quaternion } from "three";
+import { openFurnitureSafely, closedIntersections } from "./motion.js";
 
 export const FURNITURE_TYPES = [
   ["kitchen", "Modular kitchen", "Base, wall and tall cabinets"],
@@ -81,6 +82,7 @@ export function defaultFurnitureSpec(type = "wardrobe") {
     handles: true,
     fronts: !["bookcase", "desk"].includes(type),
     open: 0,
+    slidingAccess: "right",
     x: 0,
     y: 0,
     elevation: type === "loft" ? 2100 : 0,
@@ -98,7 +100,11 @@ export function defaultFurnitureSpec(type = "wardrobe") {
     frontStyle: type === "loft" ? "lift-up" : "hinged",
     bays:
       type === "wardrobe"
-        ? [bay("hanging"), bay("mixed"), { ...bay("shelves"), hinge: "right" }]
+        ? [
+            bay("hanging"),
+            { ...bay("mixed"), internalDrawers: true, doors: 2 },
+            { ...bay("shelves"), hinge: "right" },
+          ]
         : type === "tv"
           ? [bay("drawers"), bay("open"), bay("shelves", 1)]
           : type === "loft"
@@ -128,6 +134,8 @@ export function validateFurnitureSpec(s) {
   number(s.plinth, "Plinth", 0, 300);
   number(s.reveal, "Reveal gap", 1, 10);
   number(s.open, "Opening fraction", 0, 1);
+  if (s.slidingAccess && !["left", "right"].includes(s.slidingAccess))
+    throw Error("Choose left or right sliding access");
   for (const k of ["x", "y", "elevation"]) number(s[k], k, -100000, 100000);
   number(s.rotation, "Rotation", -36000, 36000);
   number(s.worktopThickness, "Worktop thickness", 9, 100);
@@ -268,6 +276,7 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
     if (options.mechanism) {
       o.mechanism = {
         ...options.mechanism,
+        jointId: frame.key + options.mechanism.jointId,
         pivot: transform(options.mechanism.pivot || position),
         axis: new Vector3(...(options.mechanism.axis || [0, 0, 1]))
           .applyAxisAngle(new Vector3(0, 0, 1), rad(frame.angle + globalAngle))
@@ -308,7 +317,9 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
     if ((frame.frontStyle || s.frontStyle) === "lift-up") {
       const mechanism = {
         kind: "hinge",
-        pivot: [(left + right) / 2, y, top],
+        jointId: key,
+        type: "door",
+        pivot: [(left + right) / 2, y - s.thickness / 2, top],
         axis: [1, 0, 0],
         angle: -100,
       };
@@ -340,11 +351,13 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
     }
     const w = right - left,
       h = top - bottom,
-      pivot = [hinge === "left" ? left : right, y, bottom];
+      pivot = [hinge === "left" ? left : right, y - s.thickness / 2, bottom];
     const mechanism = {
       kind: "hinge",
+      jointId: key,
+      type: "door",
       pivot,
-      angle: hinge === "left" ? -100 : 100,
+      angle: hinge === "left" ? -90 : 90,
     };
     add(
       key,
@@ -377,12 +390,22 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
         mechanism,
       );
   }
-  function drawers(key, left, right, bottom, top, frontY, depth, count) {
+  function drawers(
+    key,
+    left,
+    right,
+    bottom,
+    top,
+    frontY,
+    depth,
+    count,
+    inset = false,
+  ) {
     if (!count) throw Error("A drawer compartment needs at least one drawer");
     const pitch = (top - bottom) / count,
       dt = Math.min(15, s.thickness),
       gap = s.reveal,
-      slide = 13,
+      slide = Math.max(13, inset ? s.thickness / 2 + gap + 2 : 13),
       boxWidth = right - left - 2 * slide,
       boxDepth = Math.min(550, depth - 55),
       boxHeight = pitch - 50;
@@ -395,13 +418,19 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
         z = bottom + i * pitch,
         mechanism = {
           kind: "slide",
+          jointId: k,
+          type: "drawer",
           direction: [0, -1, 0],
           travel: boxDepth * 0.85,
         };
       add(
         k + "/front",
         "Drawer front",
-        [right - left - 2 * gap, s.thickness, pitch - 2 * gap],
+        [
+          inset ? boxWidth : right - left - 2 * gap,
+          s.thickness,
+          pitch - 2 * gap,
+        ],
         [(left + right) / 2, frontY, z + pitch / 2],
         "drawer-front",
         s.frontMaterial,
@@ -453,6 +482,17 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
           [10, boxDepth, 25],
           [bx + sign * (boxWidth / 2 + 6), cy, z + 30],
         );
+      if (slide > 13)
+        for (const sign of [-1, 1])
+          add(
+            k + "/packer" + sign,
+            "Drawer runner spacer",
+            [slide - 13, boxDepth, 35],
+            [bx + sign * ((right - left) / 2 - (slide - 13) / 2), cy, z + 30],
+            "panel",
+            s.material,
+            { thicknessAxis: 0 },
+          );
     }
   }
   function cabinet({
@@ -483,7 +523,7 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
       reveal = s.reveal;
     // All stated depths include the overlay front. The back is applied behind the carcass.
     const sliding = fronts && frame.frontStyle === "sliding",
-      frontExtra = sliding ? 2 * t + 2 * reveal : 0;
+      frontExtra = sliding ? 2 * t + 2 * reveal + 26 : 0;
     const frontAllowance =
       frontExtra +
       (bays.some(
@@ -542,7 +582,7 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
         "plinth",
         "Recessed plinth",
         [width - 2 * t, t, plinth],
-        [0, -depth / 2 + 65, plinth / 2],
+        [0, -depth / 2 + Math.min(65, depth * 0.15), plinth / 2],
         "panel",
         s.material,
         { thicknessAxis: 1 },
@@ -553,7 +593,13 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
             "foot" + x + y,
             "Adjustable cabinet foot",
             [40, 40, plinth],
-            [x * (width / 2 - 55), y * (depth / 2 - 65), plinth / 2],
+            [
+              x * (width / 2 - 55),
+              y === -1
+                ? -depth / 2 + Math.min(65, depth * 0.15) + t / 2 + 26
+                : depth / 2 - Math.min(65, depth * 0.2),
+              plinth / 2,
+            ],
           );
     }
     const usable = width - (bays.length + 1) * t,
@@ -567,6 +613,8 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
         k = "bay" + i;
       let bottom = baseBottom,
         interior = b.type;
+      const enclosed = fronts && !sliding && b.internalDrawers && b.doors > 0;
+      const drawerSetback = enclosed ? t + 26 : 0;
       if (cw < 120)
         throw Error("Each compartment needs at least 120 mm clear width");
       if (i)
@@ -606,9 +654,10 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
           right,
           bottom,
           bottom + b.drawerHeight,
-          frontY,
-          bodyDepth,
+          frontY + drawerSetback,
+          bodyDepth - drawerSetback,
           b.drawers,
+          enclosed || sliding,
         );
         add(
           k + "/separator",
@@ -673,14 +722,38 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
           );
       }
       if (b.type === "drawers")
-        drawers(k, left, right, bottom, top, frontY, bodyDepth, b.drawers);
-      else if (fronts && !sliding && interior !== "open" && b.doors) {
+        drawers(
+          k,
+          left,
+          right,
+          bottom,
+          top,
+          frontY + drawerSetback,
+          bodyDepth - drawerSetback,
+          b.drawers,
+          enclosed || sliding,
+        );
+      if (
+        fronts &&
+        !sliding &&
+        (b.type !== "drawers" || enclosed) &&
+        interior !== "open" &&
+        b.doors
+      ) {
         const fl = left - t + reveal + (i ? t / 2 : 0),
           fr = right + t - reveal - (i < bays.length - 1 ? t / 2 : 0);
         const doorBottom =
-          b.type === "mixed" ? bottom - t + reveal : z0 + reveal;
+          b.type === "mixed" && !enclosed ? bottom - t + reveal : z0 + reveal;
         if (b.doors === 2) {
           const mid = (fl + fr) / 2;
+          if (frame.frontStyle !== "lift-up") {
+            const leafWidth = (fr - fl - reveal) / 2,
+              minimumGap = Math.sqrt(leafWidth ** 2 + t ** 2) - leafWidth + 0.2;
+            if (reveal < minimumGap)
+              throw Error(
+                `Double-door swing needs at least ${Math.ceil(minimumGap)} mm reveal at this door thickness. Increase the reveal or use thinner fronts.`,
+              );
+          }
           door(
             k + "/doorL",
             fl,
@@ -728,6 +801,8 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
           y = -depth / 2 + t / 2 + i * (t + reveal),
           mechanism = {
             kind: "slide",
+            jointId: "sliding" + i,
+            type: "door",
             direction: [-1, 0, 0],
             travel: i ? panelWidth - overlap : 0,
           };
@@ -744,8 +819,12 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
           fitting(
             "sliding" + i + "/handle",
             "Recessed sliding pull",
-            [12, 2, 128],
-            [x + panelWidth / 2 - 40, y - t / 2, z0 + bodyHeight * 0.6],
+            [12, Math.min(2, reveal / 2), 128],
+            [
+              x + panelWidth / 2 - 40,
+              y - t / 2 - Math.min(2, reveal / 2) / 2,
+              z0 + bodyHeight * 0.6,
+            ],
             mechanism,
           );
       }
@@ -968,7 +1047,7 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
     add(
       "modesty",
       "Modesty panel",
-      [s.width - pedestal - 90, s.thickness, 250],
+      [s.width - pedestal - 130, s.thickness, 250],
       [pedestal / 2, s.depth / 2 - 45, z - 150],
       "panel",
       s.material,
@@ -997,6 +1076,13 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
     if (o.role === "hardware")
       hardware.push({ id: o.id, name: o.hardwareType || o.name, size: o.size });
   const result = { objects, groups, hardware };
+  const clashes = closedIntersections(objects, 1);
+  if (clashes.length)
+    throw Error(
+      "Construction clearance: " +
+        clashes[0].message +
+        ". Adjust dimensions or compartment settings.",
+    );
   setFurnitureOpen(result, id, s.open);
   return result;
 }
@@ -1004,39 +1090,16 @@ export function buildFurniture(input, { id = uid(), previous = [] } = {}) {
 export function setFurnitureOpen(project, id, fraction) {
   if (!Number.isFinite(fraction) || fraction < 0 || fraction > 1)
     throw Error("Opening must be between 0 and 1");
-  if (
-    project.objects.some((o) => o.furnitureId === id && o.mechanism && o.locked)
-  )
-    throw Error("Unlock the furniture fronts before opening or closing them");
-  for (const o of project.objects.filter(
-    (o) => o.furnitureId === id && o.mechanism,
-  )) {
-    const m = o.mechanism;
-    if (m.kind === "slide") {
-      o.position = m.closedPosition.map(
-        (n, i) => n + m.direction[i] * m.travel * fraction,
-      );
-      o.rotation = [...m.closedRotation];
-    } else {
-      const angle = m.angle * fraction;
-      const turn = new Quaternion().setFromAxisAngle(
-        new Vector3(...(m.axis || [0, 0, 1])),
-        rad(angle),
-      );
-      o.position = new Vector3(...m.closedPosition)
-        .sub(new Vector3(...m.pivot))
-        .applyQuaternion(turn)
-        .add(new Vector3(...m.pivot))
-        .toArray();
-      const q = turn.multiply(
-        new Quaternion().setFromEuler(new Euler(...m.closedRotation.map(rad))),
-      );
-      const e = new Euler().setFromQuaternion(q);
-      o.rotation = [e.x, e.y, e.z].map((n) => (n * 180) / Math.PI);
-    }
-  }
   const g = project.groups.find((g) => g.id === id);
+  const report = openFurnitureSafely(
+    project,
+    id,
+    fraction,
+    g?.furnitureSpec?.slidingAccess || "right",
+  );
   if (g?.furnitureSpec) g.furnitureSpec.open = fraction;
+  if (g) g.motionReport = report;
+  return report;
 }
 export function selectedFurniture(project, selection) {
   const ids = new Set(

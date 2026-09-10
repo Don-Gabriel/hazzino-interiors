@@ -237,6 +237,13 @@ export function validateProject(p) {
           );
       if (
         !["hinge", "slide"].includes(m.kind) ||
+        (m.jointId != null &&
+          (typeof m.jointId !== "string" || m.jointId.length > 300)) ||
+        (m.appliedFraction != null &&
+          (!Number.isFinite(m.appliedFraction) ||
+            m.appliedFraction < 0 ||
+            m.appliedFraction > 1)) ||
+        (m.type != null && !["door", "drawer"].includes(m.type)) ||
         !["pivot", "direction", "closedPosition", "closedRotation"].every((k) =>
           vector(m[k]),
         ) ||

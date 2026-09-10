@@ -4,6 +4,7 @@ export function instantiateProject(source, target) {
   const copy = clone(source),
     objects = new Map(copy.objects.map((o) => [o.id, uid()])),
     groups = new Map(copy.groups.map((g) => [g.id, uid()]));
+  const jointIds = new Map();
   const materials = [],
     materialIds = new Map();
   for (const m of copy.materials || []) {
@@ -17,6 +18,11 @@ export function instantiateProject(source, target) {
     o.id = objects.get(o.id);
     o.groupId = groups.get(o.groupId) || null;
     if (o.furnitureId) o.furnitureId = groups.get(o.furnitureId) || null;
+    if (o.mechanism?.manual && o.mechanism.jointId) {
+      if (!jointIds.has(o.mechanism.jointId))
+        jointIds.set(o.mechanism.jointId, uid());
+      o.mechanism.jointId = jointIds.get(o.mechanism.jointId);
+    }
     if (o.hostId) o.hostId = objects.get(o.hostId);
     o.material = materialIds.get(o.material) || o.material;
     if (o.faceGroups)

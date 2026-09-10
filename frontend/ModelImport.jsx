@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Dialog } from "./Dialogs.jsx";
 import { useEditor } from "./store.js";
 import { validateProject } from "../shared/model.js";
+import { placeBeside } from "../shared/motion.js";
 function encodeTexture(image) {
   const factor = Math.min(1, 2048 / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
@@ -16,6 +17,7 @@ export function ModelImportDialog({ close }) {
     [scale, setScale] = useState("auto"),
     [up, setUp] = useState("auto"),
     [origin, setOrigin] = useState(true),
+    [beside, setBeside] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   async function run() {
@@ -40,6 +42,7 @@ export function ModelImportDialog({ close }) {
         },
       );
       s.commit("Import " + file.name, (p) => {
+        if (beside) placeBeside(imported, p.objects);
         p.objects.push(...imported.objects);
         p.groups.push(...imported.groups);
         p.materials = [...(p.materials || []), ...imported.materials];
@@ -103,6 +106,14 @@ export function ModelImportDialog({ close }) {
           Centre on the origin and place on the ground
         </label>
         <p className="hint">
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={beside}
+              onChange={(e) => setBeside(e.target.checked)}
+            />
+            Place beside existing furniture with 150 mm clearance
+          </label>
           Use GLB with embedded textures for material transfer. OBJ, STL and PLY
           import mesh geometry. SKP files need conversion with the SketchUp
           exporter.

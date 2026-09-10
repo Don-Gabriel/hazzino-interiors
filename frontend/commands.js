@@ -126,6 +126,7 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
       ),
       separator,
       modal("production", "Cut list, drawings & sheet layout…", "production"),
+      modal("motion", "Hinges, slides & clearance…", "motion"),
       modal("machining", "Panel drilling, pockets & grooves…", "machining", {
         disabled: s.selection.length !== 1,
       }),

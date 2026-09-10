@@ -3,6 +3,7 @@ import { Box, ArrowUpRight } from "lucide-react";
 import { Dialog } from "./Dialogs.jsx";
 import { useEditor } from "./store.js";
 import { instantiateProject } from "../shared/project-import.js";
+import { placeBeside } from "../shared/motion.js";
 export function ModelLibraryDialog({ close }) {
   const s = useEditor(),
     [models, setModels] = useState([]),
@@ -34,6 +35,7 @@ export function ModelLibraryDialog({ close }) {
       const source = await response.json(),
         state = useEditor.getState();
       const copy = instantiateProject(source, state.project);
+      placeBeside(copy, state.project.objects);
       state.add(copy, "Insert " + model.name);
       state.engine?.fit(true);
       close();

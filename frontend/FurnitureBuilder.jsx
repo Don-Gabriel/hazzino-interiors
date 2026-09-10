@@ -14,6 +14,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { Dialog } from "./Dialogs.jsx";
 import { Numeric } from "./App.jsx";
 import { useEditor, download } from "./store.js";
+import { placeBeside, unreachableSlidingDrawers } from "../shared/motion.js";
 import { materialCatalog, materialFor, clone } from "../shared/model.js";
 import { objectGeometry } from "../shared/geometry.js";
 import {
@@ -146,10 +147,21 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
   );
   const [tab, setTab] = useState("design"),
     [error, setError] = useState("");
+  const [autoPlace, setAutoPlace] = useState(!existing);
   const set = (k, v) => setSpec((s) => ({ ...s, [k]: v }));
   const preview = useMemo(() => {
     try {
-      return { model: buildFurniture(spec, { id: "preview" }) };
+      const model = buildFurniture(spec, { id: "preview" });
+      const unreachable =
+        spec.frontStyle === "sliding"
+          ? unreachableSlidingDrawers(model, "preview")
+          : [];
+      return {
+        model,
+        accessError: unreachable.length
+          ? "A drawer cannot clear either sliding opening. Move drawers to an outer compartment or use hinged doors."
+          : "",
+      };
     } catch (e) {
       return { error: e.message };
     }
@@ -182,6 +194,7 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
   function create() {
     setError("");
     try {
+      if (preview.accessError) throw Error(preview.accessError);
       let ids;
       if (existing) {
         const ok = s.commit("Reconfigure " + spec.name, (p) => {
@@ -191,6 +204,7 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
       } else {
         const result = buildFurniture(spec);
         const ok = s.commit("Build " + spec.name, (p) => {
+          if (autoPlace) placeBeside(result, p.objects);
           p.objects.push(...result.objects);
           p.groups.push(...result.groups);
         });
@@ -475,7 +489,7 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
                             onChange={(v) => changeBay(i, "drawers", v)}
                           />
                         )}
-                        {b.type !== "drawers" && (
+                        {(b.type !== "drawers" || b.internalDrawers) && (
                           <label className="field-label">
                             Doors
                             <select
@@ -517,20 +531,38 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
                             </label>
                           </>
                         )}
-                        {b.doors === 1 && b.type !== "drawers" && (
-                          <label className="field-label">
-                            Hinge side
-                            <select
-                              value={b.hinge}
-                              onChange={(e) =>
-                                changeBay(i, "hinge", e.target.value)
-                              }
-                            >
-                              <option value="left">Left</option>
-                              <option value="right">Right</option>
-                            </select>
-                          </label>
-                        )}
+                        {["mixed", "drawers"].includes(b.type) &&
+                          spec.frontStyle !== "sliding" && (
+                            <label className="check-label">
+                              <input
+                                type="checkbox"
+                                checked={!!b.internalDrawers}
+                                onChange={(e) =>
+                                  changeBay(
+                                    i,
+                                    "internalDrawers",
+                                    e.target.checked,
+                                  )
+                                }
+                              />
+                              Drawers behind cabinet doors
+                            </label>
+                          )}
+                        {b.doors === 1 &&
+                          (b.type !== "drawers" || b.internalDrawers) && (
+                            <label className="field-label">
+                              Hinge side
+                              <select
+                                value={b.hinge}
+                                onChange={(e) =>
+                                  changeBay(i, "hinge", e.target.value)
+                                }
+                              >
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                              </select>
+                            </label>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -627,6 +659,16 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
           )}
           {tab === "placement" && (
             <div className="form-grid">
+              {!existing && (
+                <label className="check-label">
+                  <input
+                    type="checkbox"
+                    checked={autoPlace}
+                    onChange={(e) => setAutoPlace(e.target.checked)}
+                  />
+                  Place beside existing furniture (150 mm gap)
+                </label>
+              )}
               {field("x", "Position X", -100000)}
               {field("y", "Position Y", -100000)}
               {field("elevation", "Bottom elevation", -100000)}
@@ -639,6 +681,37 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
           )}
         </div>
         <div className="furniture-stage">
+          {preview.accessError && (
+            <div className="motion-warning" role="alert">
+              <p>{preview.accessError}</p>
+              {spec.type !== "kitchen" && (
+                <button
+                  className="secondary"
+                  onClick={() =>
+                    set("bays", [
+                      spec.bays.find(
+                        (b) => !["drawers", "mixed"].includes(b.type),
+                      ) || defaultFurnitureSpec("wardrobe").bays[0],
+                      spec.bays.find((b) =>
+                        ["drawers", "mixed"].includes(b.type),
+                      ) || defaultFurnitureSpec("wardrobe").bays[1],
+                    ])
+                  }
+                >
+                  Use two sliding compartments
+                </button>
+              )}
+            </div>
+          )}
+          {!!preview.model?.groups[0]?.motionReport?.blocked.length && (
+            <p role="status" className="motion-warning">
+              {preview.model.groups[0].motionReport.blocked.length} movement(s)
+              blocked.{" "}
+              {spec.frontStyle === "sliding"
+                ? "Centre drawers cannot pass the stacked leaves. Change access, use an outer compartment, or choose hinged doors."
+                : "A panel or handle blocks the path. Inspect individual joints."}
+            </p>
+          )}
           <Preview model={preview.model} project={s.project} />
           <div className="furniture-preview-info">
             <strong>{spec.name}</strong>
@@ -662,9 +735,22 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
             />
             <output>{Math.round(spec.open * 100)}%</output>
           </label>
+          {spec.frontStyle === "sliding" && (
+            <label className="field-label">
+              Sliding access
+              <select
+                aria-label="Sliding access"
+                value={spec.slidingAccess || "right"}
+                onChange={(e) => set("slidingAccess", e.target.value)}
+              >
+                <option value="right">Access right — stack doors left</option>
+                <option value="left">Access left — stack doors right</option>
+              </select>
+            </label>
+          )}
           <p className="hint">
-            Preview uses your exact dimensions. Orbit to inspect the back and
-            interior.
+            Doors open first, then drawers. Closing retracts drawers first.
+            Panels keep their dimensions; obstructions limit movement.
           </p>
           {existing && (
             <p className="hint">
@@ -683,7 +769,11 @@ export function FurnitureBuilder({ close, type = "wardrobe", edit = false }) {
         <button className="secondary" onClick={close}>
           Cancel
         </button>
-        <button className="primary" disabled={!!preview.error} onClick={create}>
+        <button
+          className="primary"
+          disabled={!!(preview.error || preview.accessError)}
+          onClick={create}
+        >
           <Plus size={16} />
           {existing ? "Update furniture" : "Add furniture to project"}
         </button>
@@ -726,6 +816,27 @@ export function FurnitureActions() {
           Select assembly
         </button>
       </div>
+      {assemblies.length === 1 &&
+        assemblies[0].furnitureSpec.frontStyle === "sliding" && (
+          <label className="field-label">
+            Sliding access
+            <select
+              value={assemblies[0].furnitureSpec.slidingAccess || "right"}
+              onChange={(e) => {
+                const access = e.target.value;
+                s.commit("Change sliding access", (p) => {
+                  p.groups.find(
+                    (g) => g.id === assemblies[0].id,
+                  ).furnitureSpec.slidingAccess = access;
+                  setFurnitureOpen(p, assemblies[0].id, 1);
+                });
+              }}
+            >
+              <option value="right">Access right</option>
+              <option value="left">Access left</option>
+            </select>
+          </label>
+        )}
       <div className="button-row">
         <button
           className="secondary"
@@ -754,6 +865,12 @@ export function FurnitureActions() {
           Cut list
         </button>
       </div>
+      {assemblies.some((g) => g.motionReport?.blocked?.length) && (
+        <p role="status" className="hint">
+          Movement stopped at an obstruction. Open Hinges, slides & clearance to
+          inspect it.
+        </p>
+      )}
     </div>
   );
 }

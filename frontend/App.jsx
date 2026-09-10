@@ -883,6 +883,12 @@ function Properties() {
     <>
       <FurnitureActions />
       <PanelFabrication />
+      <button
+        className="secondary full"
+        onClick={() => s.set({ modal: "motion" })}
+      >
+        Hinges, slides & clearance
+      </button>
       <div className="object-heading">
         <div className="object-type-icon">
           <Box size={21} />

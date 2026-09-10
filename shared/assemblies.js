@@ -9,6 +9,16 @@ const matrix = (o) =>
   );
 const equal = (a, b) =>
   a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.002);
+export function hasShear(transform) {
+  const basis = [0, 1, 2].map((i) =>
+    new Vector3().setFromMatrixColumn(transform, i).normalize(),
+  );
+  return (
+    Math.abs(basis[0].dot(basis[1])) > 1e-6 ||
+    Math.abs(basis[0].dot(basis[2])) > 1e-6 ||
+    Math.abs(basis[1].dot(basis[2])) > 1e-6
+  );
+}
 export function groupDescendants(project, id) {
   const ids = new Set([id]);
   let changed = true;

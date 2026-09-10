@@ -43,6 +43,7 @@ import { ModelImportDialog } from "./ModelImport.jsx";
 import { ModelLibraryDialog } from "./ModelLibrary.jsx";
 import { FurnitureBuilder, ProductionDialog } from "./FurnitureBuilder.jsx";
 import { MachiningDialog } from "./MachiningDialog.jsx";
+import { MotionDialog } from "./MotionDialog.jsx";
 export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   return (
     <div
@@ -69,6 +70,7 @@ export function Dialog({ title, subtitle, children, onClose, wide = false }) {
 }
 export function Dialogs({ kind, close }) {
   if (kind === "machining") return <MachiningDialog close={close} />;
+  if (kind === "motion") return <MotionDialog close={close} />;
   if (kind === "production") return <ProductionDialog close={close} />;
   if (kind === "furniture-edit") return <FurnitureBuilder close={close} edit />;
   if (kind === "furniture" || kind.startsWith("furniture:"))
