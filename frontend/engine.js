@@ -949,19 +949,9 @@ export class EditorEngine {
     this.disposeGroup(this.drawGroup);
     this.drawGroup.clear();
     if (!this.points.length) return;
-    const s = useEditor.getState(),
-      p = this.points[0];
+    const s = useEditor.getState();
+    // Shape builders need the original click points, not an expanded outline.
     let pts = [...this.points, end];
-    if (s.tool === "rectangle") {
-      const a = p.clone(),
-        b = end.clone();
-      let c = a.clone(),
-        d = b.clone();
-      const ax = s.plane === "YZ" ? 1 : 0;
-      c.setComponent(ax, b.getComponent(ax));
-      d.setComponent(ax, a.getComponent(ax));
-      pts = [a, c, b, d, a];
-    }
     try {
       const geometry = drawingGeometry(
         s.tool,

@@ -38,6 +38,64 @@ function harness(tool, plane = "XY") {
   });
   return engine;
 }
+
+test("rectangle preview shows four sides before the second click on every drawing plane", () => {
+  for (const plane of ["XY", "XZ", "YZ"])
+    for (const signs of [
+      [1, 1],
+      [-1, 1],
+      [1, -1],
+      [-1, -1],
+    ]) {
+      const engine = harness("rectangle", plane),
+        start = fromPlane([125, 230], plane),
+        end = fromPlane([125 + 600 * signs[0], 230 + 2100 * signs[1]], plane),
+        axes = PLANE_FRAMES[plane].axes;
+      engine.marker = new T.Object3D();
+      engine.camera = new T.PerspectiveCamera();
+      engine.camera.position.set(4000, -4000, 4000);
+      engine.click({ point: start });
+      engine.pointer({ point: end });
+      const positions =
+          engine.drawGroup.children[0].geometry.attributes.position,
+        corners = Array.from({ length: positions.count }, (_, i) =>
+          new T.Vector3().fromBufferAttribute(positions, i).toArray(),
+        );
+      assert.equal(corners.length, 5, "closed four-sided outline");
+      assert.equal(new Set(corners.map((p) => p.join(","))).size, 4);
+      assert.deepEqual(corners[0], corners[4]);
+      axes.forEach((axis, i) => {
+        const values = corners.map((p) => p[axis]);
+        near(Math.max(...values) - Math.min(...values), [600, 2100][i]);
+      });
+      assert.ok(corners.every((p) => p[PLANE_FRAMES[plane].normal] === 0));
+      assert.equal(
+        useEditor.getState().project.objects.length,
+        0,
+        "preview must not create a face",
+      );
+      assert.equal(useEditor.getState().history.length, 0);
+      engine.click({ point: end });
+      const face = useEditor.getState().project.objects[0];
+      axes.forEach((axis, i) => {
+        near(face.size[axis], [600, 2100][i]);
+        near(face.position[axis], (start[axis] + end[axis]) / 2);
+      });
+      assert.equal(
+        engine.drawGroup.children.length,
+        0,
+        "commit clears the preview",
+      );
+      assert.equal(useEditor.getState().history.length, 1);
+      engine.extrude(18);
+      near(
+        useEditor.getState().project.objects[0].size[
+          PLANE_FRAMES[plane].normal
+        ],
+        18,
+      );
+    }
+});
 test("two-point and three-point arcs use the bulge/through point and preserve endpoints", () => {
   const a = [-100, 0, 0],
     b = [100, 0, 0],
