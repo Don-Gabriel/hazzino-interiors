@@ -1,5 +1,9 @@
 # Cloudflare deployment
 
+## Final key setup — 10 September 2026, 3:44 pm IST
+
+All five supplied keys passed local and Worker-side model metadata checks and were installed as secrets after the owner confirmed Free tier. The model is now `gemini-3.5-flash-lite`, with supported minimal thinking and unchanged output/budget caps. Code deployment `90dccf9b-1019-463c-adfb-43ca1e90bbf8` was followed by a secret-change deployment. All seven targeted regressions and the build passed. Real local generation returned an 1800 × 600 × 2400 mm wardrobe plan using 358 tokens; its generated 93-part assembly validated. **Worker-side generation still returns HTTP 404 despite successful metadata verification. Use localhost:5173 for AI; this cloud-specific issue remains unresolved.** This update supersedes the earlier unconfigured status below.
+
 ## Current release — modelling corrections and furniture AI, 10 September 2026
 
 - Current version: `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`; published before the 3:40 pm IST cutoff.

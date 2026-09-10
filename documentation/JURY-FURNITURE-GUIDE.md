@@ -6,6 +6,8 @@ Build date: 10 September 2026. This guide describes the furniture demonstration 
 
 **Source:** https://github.com/Don-Gabriel/hazzino-interiors
 
+**Final AI verification update (10 September, 3:44 pm IST):** all five supplied keys passed real model-access checks locally and from the deployed Worker. The owner confirmed Free tier, and the keys are installed as Worker secrets. Gemini 3.5 Flash-Lite generated an exact 1800 × 600 × 2400 mm wardrobe specification locally (283 input + 75 output = 358 tokens); that specification produced a validated 93-part assembly. Use the **local app at http://127.0.0.1:5173/** for the AI demonstration. Cloudflare text generation still returns HTTP 404 despite successful key verification. It is an unresolved deployment-specific AI failure; cloud manual/preset modelling and storage remain available. Do not claim cloud AI generation is verified.
+
 ## 1. What the app does
 
 Hazzino is a browser-based furniture modeller. A design contains real editable board and mesh geometry, materials, assemblies and optional hinge/slide mechanisms. Presets and manual modelling share the same document, transformations, save format and quantity calculations.
@@ -179,7 +181,7 @@ GEMINI_API_KEY_2=
 GEMINI_API_KEY_3=
 GEMINI_API_KEY_4=
 GEMINI_API_KEY_5=
-GEMINI_FURNITURE_MODEL=gemini-2.5-flash-lite
+GEMINI_FURNITURE_MODEL=gemini-3.5-flash-lite
 GEMINI_FREE_TIER_CONFIRMED=false
 ```
 
@@ -215,9 +217,9 @@ On 10 September, after this correction pass, **`npm test` passed 112/112 tests**
 
 Browser evidence in this pass: created a separate custom swatch, entered `#245ee8`, activated Paint bucket, clicked the rectangle and observed its actual rendered surface change to blue. Earlier browser passes exercised the full manual cabinet sequence, exact snap movement, save/reopen/edit/Undo, furniture generation/opening, machining/offsets, library insertion and sheet calculation. Automated tests are broader than a single demonstration but do not establish exhaustive UI correctness.
 
-All six cloud integration tests also passed against version `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`. Browser checks additionally verified layer reassignment, Change finish scrolling and the AI dialog's generation block before Free-tier confirmation. One existing local key passed a real model-metadata request (1,048,576 input / 65,536 output context limits); those are model context sizes, not free usage allowances. The four other requested slots remained empty, and no cloud keys were installed.
+All six cloud integration tests passed against the modelling release `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`. Browser checks additionally verified layer reassignment, Change finish scrolling and the AI dialog's generation block before Free-tier confirmation. All five supplied keys subsequently passed real model-metadata requests (1,048,576 input / 65,536 output context limits); those are model context sizes, not free usage allowances. All five keys have now been installed as Cloudflare secrets. The subsequent Flash-Lite update passed all seven targeted regression tests and the production build.
 
-Live Gemini generation is **not verified until usable keys, Free-tier confirmation and a real response are tested**. Mock tests establish transport/fallback/budget behaviour; they are not evidence of real model accuracy or billing status. Final cloud deployment/check results are recorded in `CLOUDFLARE.md` and the build log.
+Real Gemini generation is verified locally for the specific wardrobe request recorded above. Cloud generation remains unverified and failed with HTTP 404. Mock tests establish fallback/budget behaviour; they are not evidence that every possible model instruction is interpreted correctly or that billing can be verified by an API key. Final deployment/check results are recorded in `CLOUDFLARE.md` and the build log.
 
 Remaining scope limits include connected SketchUp edge/face topology, shared native component definitions, extension compatibility, native SKP/DWG/DXF/IFC round trips, user accounts/collaboration, photorealistic ray tracing, arbitrary automatic tilted planes and full physical simulation. Colour adjustments in non-colour display styles are intentionally hidden. Gizmo move is grid-based; use point-to-point movement for feature alignment. Outer shell is union. No claim of complete SketchUp cloning or automatic fabrication certification is made.
 

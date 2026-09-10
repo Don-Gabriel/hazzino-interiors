@@ -20,7 +20,7 @@ export function geminiConfig(env) {
   ];
   return {
     keys,
-    model: env.GEMINI_FURNITURE_MODEL || "gemini-2.5-flash-lite",
+    model: env.GEMINI_FURNITURE_MODEL || "gemini-3.5-flash-lite",
     enabled: env.GEMINI_FREE_TIER_CONFIRMED === "true",
   };
 }
@@ -188,9 +188,9 @@ export async function generateFurniturePlan(
       ),
       { status: 503 },
     );
-  if (c.model !== "gemini-2.5-flash-lite")
+  if (!["gemini-2.5-flash-lite", "gemini-3.5-flash-lite"].includes(c.model))
     throw Error(
-      "Demo mode only allows gemini-2.5-flash-lite; no automatic paid-model fallback.",
+      "Demo mode only allows supported Flash-Lite models; no automatic paid-model fallback.",
     );
   for (const [index, key] of c.keys.entries()) {
     await reserve();
@@ -219,7 +219,7 @@ export async function generateFurniturePlan(
               responseSchema: schema,
               temperature: 0.1,
               maxOutputTokens: DEMO_LIMITS.outputTokens,
-              thinkingConfig: { thinkingBudget: 0 },
+              thinkingConfig: c.model.startsWith("gemini-3") ? { thinkingLevel: "minimal" } : { thinkingBudget: 0 },
             },
           }),
         },
