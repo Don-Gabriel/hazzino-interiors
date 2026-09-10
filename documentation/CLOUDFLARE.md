@@ -1,5 +1,14 @@
 # Cloudflare deployment
 
+## Manual workflow correction — 10 September 2026
+
+- Live source: [`f2a8b19`](https://github.com/Don-Gabriel/hazzino-interiors/commit/f2a8b19), including `9e49ad6` for snapping and the documented manual workflow.
+- Current Cloudflare version: `fb197854-c132-4cb0-89a4-375b3ecb329a`.
+- 104 ordinary tests pass. Six public cloud integration tests passed for the workflow update; the final Outliner interface correction was then built, deployed and browser-checked on the live site. No live browser errors were observed in that final check.
+- Added point-to-point component snapping, endpoint priority, segment intersections, particle board and an accessible Outliner at narrow desktop widths.
+- [HACKATHON-WORKFLOW.md](HACKATHON-WORKFLOW.md) records the exact manual cabinet sequence, browser evidence, portable example and remaining scope. The local demonstration was saved/reopened through MongoDB and remained editable. The public Cloudflare deployment continues to use SQLite Durable Objects.
+- These new document-driven corrections were completed after the earlier 3 pm deadline; the previous clearance release had already been published before it.
+
 ## Clearance correction — 10 September 2026, 2:47 pm IST
 
 - Live app: [hazzino-interiors.hazzino-studio.workers.dev](https://hazzino-interiors.hazzino-studio.workers.dev).
