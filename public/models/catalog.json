@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Cooktop Base Cabinet_251001",
+    "file": "cooktop-base-cabinet-251001.hazzino.json",
+    "objects": 10,
+    "triangles": 3192,
+    "materials": 6,
+    "warnings": []
+  },
+  {
+    "name": "Residential Interior Door_250915",
+    "file": "residential-interior-door-250915.hazzino.json",
+    "objects": 6,
+    "triangles": 872,
+    "materials": 2,
+    "warnings": []
+  },
+  {
+    "name": "Sink Base Cabinet_251001",
+    "file": "sink-base-cabinet-251001.hazzino.json",
+    "objects": 10,
+    "triangles": 2312,
+    "materials": 4,
+    "warnings": []
+  },
+  {
+    "name": "Slide-Out Base Cabinet_251001",
+    "file": "slide-out-base-cabinet-251001.hazzino.json",
+    "objects": 28,
+    "triangles": 2274,
+    "materials": 2,
+    "warnings": []
+  },
+  {
+    "name": "Steel Column and Beam_250930",
+    "file": "steel-column-and-beam-250930.hazzino.json",
+    "objects": 1,
+    "triangles": 92,
+    "materials": 1,
+    "warnings": []
+  },
+  {
+    "name": "Toilet Partition Wall_251007",
+    "file": "toilet-partition-wall-251007.hazzino.json",
+    "objects": 41,
+    "triangles": 4894,
+    "materials": 3,
+    "warnings": []
+  },
+  {
+    "name": "Wall Cabinet_251001",
+    "file": "wall-cabinet-251001.hazzino.json",
+    "objects": 3,
+    "triangles": 280,
+    "materials": 2,
+    "warnings": []
+  },
+  {
+    "name": "Wall Open End Shelf_251009",
+    "file": "wall-open-end-shelf-251009.hazzino.json",
+    "objects": 5,
+    "triangles": 72,
+    "materials": 1,
+    "warnings": []
+  }
+]

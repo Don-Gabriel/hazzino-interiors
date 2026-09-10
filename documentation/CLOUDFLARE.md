@@ -22,7 +22,7 @@ The cloud API validates the same project schema as the local app and accepts req
 
 Gemini is not connected in this deployment. The built-in hospital template works; live Gemini generation remains available through the configured local app. Local `.env` secrets and the local MongoDB database are not uploaded. The supplied `.skp` files are reference assets in GitHub; the application does not yet import them natively.
 
-This deployment does not establish full SketchUp parity. See [SKETCHUP-WORKSPACE.md](SKETCHUP-WORKSPACE.md) for the feature audit. Offset is still pending.
+The checkpoint above predates the current furniture studio. Offset, Follow Me, solid booleans, the converted SKP sample library and furniture production are now implemented in source. See [FURNITURE-STUDIO.md](FURNITURE-STUDIO.md) for current features and limitations.
 
 ## Development and checks
 

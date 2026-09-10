@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { DISPLAY_DEFAULTS } from "../shared/workspace.js";
 import {
+  groupObjects,
+  pruneGroups,
+  selectionProject,
+  translateAssembly,
+  reconcileFurnitureEdits,
+} from "../shared/assemblies.js";
+import { instantiateProject } from "../shared/project-import.js";
+import { writeRecovery } from "./recovery.js";
+export { localProjects, localProject } from "./recovery.js";
+import {
   blankProject,
   demoProject,
   clone,
@@ -27,30 +37,6 @@ try {
   }
   workspace.panelWidth = Math.max(270, Math.min(420, workspace.panelWidth));
 } catch {}
-function writeRecovery(p) {
-  const data = JSON.stringify(p);
-  localStorage.setItem(RECOVERY, data);
-  localStorage.setItem("hazzino-project-" + p.id, data);
-  let index = [];
-  try {
-    index = JSON.parse(localStorage.getItem("hazzino-project-index") || "[]");
-  } catch {}
-  index = index.filter((v) => v.id !== p.id);
-  index.unshift({ id: p.id, name: p.name, updatedAt: p.updatedAt });
-  localStorage.setItem("hazzino-project-index", JSON.stringify(index));
-}
-export function localProjects() {
-  try {
-    return JSON.parse(localStorage.getItem("hazzino-project-index") || "[]");
-  } catch {
-    return [];
-  }
-}
-export function localProject(id) {
-  return validateProject(
-    JSON.parse(localStorage.getItem("hazzino-project-" + id)),
-  );
-}
 let initial;
 try {
   initial = validateProject(JSON.parse(localStorage.getItem(RECOVERY)));
@@ -62,6 +48,9 @@ export const useEditor = create((set, get) => ({
   selection: [],
   face: null,
   tool: "select",
+  operationActive: false,
+  operationValue: null,
+  measurementDraft: "",
   plane: "XY",
   snapEnabled: true,
   gridVisible: true,
@@ -107,12 +96,9 @@ export const useEditor = create((set, get) => ({
     }
     set({
       clipboard: {
-        objects: clone(objects),
-        groups: clone(
-          s.project.groups.filter((g) =>
-            objects.some((o) => o.groupId === g.id),
-          ),
-        ),
+        ...selectionProject(s.project, s.selection),
+        objects: selectionProject(s.project, s.selection).objects,
+        groups: clone(selectionProject(s.project, s.selection).groups),
         layers: clone(s.project.layers),
         sourceId: s.project.id,
         cut: false,
@@ -132,11 +118,19 @@ export const useEditor = create((set, get) => ({
     }
     set({
       clipboard: {
-        objects: clone(objects),
+        ...selectionProject(
+          s.project,
+          objects.map((o) => o.id),
+        ),
+        objects: selectionProject(
+          s.project,
+          objects.map((o) => o.id),
+        ).objects,
         groups: clone(
-          s.project.groups.filter((g) =>
-            objects.some((o) => o.groupId === g.id),
-          ),
+          selectionProject(
+            s.project,
+            objects.map((o) => o.id),
+          ).groups,
         ),
         layers: clone(s.project.layers),
         sourceId: s.project.id,
@@ -146,9 +140,7 @@ export const useEditor = create((set, get) => ({
     });
     s.commit("Cut " + objects.length + " objects", (p) => {
       p.objects = p.objects.filter((o) => !objects.some((v) => v.id === o.id));
-      p.groups = p.groups.filter((g) =>
-        p.objects.some((o) => o.groupId === g.id),
-      );
+      pruneGroups(p);
     });
     set({ selection: [], face: null });
   },
@@ -159,31 +151,28 @@ export const useEditor = create((set, get) => ({
       s.notify("Copy or cut objects first");
       return;
     }
-    const objectIds = new Map(c.objects.map((o) => [o.id, uid()])),
-      groupIds = new Map(c.groups.map((g) => [g.id, uid()]));
     const offset = inPlace || c.cut ? 0 : 100 * (c.pasteCount + 1);
-    const objects = c.objects.map((o) => ({
-      ...clone(o),
-      id: objectIds.get(o.id),
-      groupId: groupIds.get(o.groupId) || null,
-      position: o.position.map((v, i) => v + (i === 0 ? offset : 0)),
-      ...(o.anchors
-        ? {
-            anchors: o.anchors.map((a) =>
-              a && objectIds.has(a.id)
-                ? { ...a, id: objectIds.get(a.id) }
-                : c.sourceId === s.project.id &&
-                    s.project.objects.some((o) => o.id === a?.id)
-                  ? a
-                  : null,
-            ),
-          }
-        : {}),
-    }));
+    const items = translateAssembly(
+        instantiateProject({ ...blankProject(), ...c }, s.project),
+        [offset, 0, 0],
+      ),
+      objects = items.objects;
+    for (const o of objects)
+      if (o.anchors)
+        o.anchors = o.anchors.map((a) =>
+          a &&
+          (objects.some((v) => v.id === a.id) ||
+            (c.sourceId === s.project.id &&
+              s.project.objects.some((v) => v.id === a.id)))
+            ? a
+            : null,
+        );
     s.commit(inPlace ? "Paste in place" : "Paste objects", (p) => {
-      for (const l of c.layers)
+      for (const l of items.layers)
         if (!p.layers.some((v) => v.id === l.id)) p.layers.push(l);
-      p.groups.push(...c.groups.map((g) => ({ ...g, id: groupIds.get(g.id) })));
+      p.groups.push(...items.groups);
+      if (items.materials.length)
+        p.materials = [...(p.materials || []), ...items.materials];
       p.objects.push(...objects);
     });
     set({
@@ -276,11 +265,12 @@ export const useEditor = create((set, get) => ({
       p.objects
         .filter((o) => s.selection.includes(o.id) && !o.locked)
         .forEach((o) => {
-          if (s.face && o.kind === "box")
+          if (s.face && (o.kind === "box" || o.faceGroups))
             o.faceMaterials = { ...o.faceMaterials, [s.face.index]: id };
           else {
             o.material = id;
             o.faceMaterials = {};
+            if (o.faceGroups) o.faceGroups.forEach((g) => (g.material = id));
           }
         }),
     );
@@ -355,6 +345,8 @@ export const useEditor = create((set, get) => ({
       p = clone(s.project);
     try {
       mutate(p);
+      reconcileFurnitureEdits(s.project, p);
+      pruneGroups(p, [...s.project.groups, ...p.groups]);
       p.updatedAt = new Date().toISOString();
       validateProject(p);
       set({
@@ -364,14 +356,11 @@ export const useEditor = create((set, get) => ({
         dirty: true,
         status: label,
       });
-      try {
-        writeRecovery(p);
-        set({ saveStatus: "Saved on this device" });
-      } catch {
-        set({ saveStatus: "Browser storage full — save project now" });
-      }
+      get().recover(true);
+      return true;
     } catch (e) {
       set({ status: e.message });
+      return false;
     }
   },
   undo: () => {
@@ -404,19 +393,27 @@ export const useEditor = create((set, get) => ({
     });
     get().recover();
   },
-  recover: () => {
+  recover: async (showStatus = false) => {
+    const project = get().project;
     try {
-      writeRecovery(get().project);
-    } catch {}
+      await writeRecovery(project);
+      if (showStatus && get().project === project)
+        set({ saveStatus: "Saved on this device" });
+      return true;
+    } catch {
+      if (showStatus && get().project === project)
+        set({ saveStatus: "Recovery unavailable — save project now" });
+      return false;
+    }
   },
   select: (id, add = false, face = null) => {
     const s = get();
     let ids = id ? [id] : [];
     const o = s.project.objects.find((o) => o.id === id);
-    if (o?.groupId && s.selectionMode === "group")
-      ids = s.project.objects
-        .filter((v) => v.groupId === o.groupId)
-        .map((v) => v.id);
+    if ((o?.groupId || o?.furnitureId) && s.selectionMode === "group")
+      ids = groupObjects(s.project, o.furnitureId || o.groupId).map(
+        (v) => v.id,
+      );
     set({
       selection: add
         ? [
@@ -432,12 +429,17 @@ export const useEditor = create((set, get) => ({
   },
   add: (items, label = "Create object") => {
     const objects = Array.isArray(items) ? items : items.objects;
-    get().commit(label, (p) => {
+    const ok = get().commit(label, (p) => {
       p.objects.push(...objects);
       if (items.groups) p.groups.push(...items.groups);
+      if (items.materials?.length)
+        p.materials = [...(p.materials || []), ...items.materials];
+      if (items.layers?.length) p.layers.push(...items.layers);
       if (items.roomInfo) p.roomInfo = items.roomInfo;
     });
-    set({ selection: objects.map((o) => o.id), tool: "select", face: null });
+    if (ok)
+      set({ selection: objects.map((o) => o.id), tool: "select", face: null });
+    return ok;
   },
   update: (id, patch, label = "Edit properties") =>
     get().commit(label, (p) => {
@@ -447,10 +449,15 @@ export const useEditor = create((set, get) => ({
   remove: () => {
     const ids = get().selection;
     get().commit("Delete selection", (p) => {
-      p.objects = p.objects.filter((o) => !ids.includes(o.id) || o.locked);
-      p.groups = p.groups.filter((g) =>
-        p.objects.some((o) => o.groupId === g.id),
+      const removed = new Set(
+        p.objects
+          .filter((o) => ids.includes(o.id) && !o.locked)
+          .map((o) => o.id),
       );
+      p.objects = p.objects.filter(
+        (o) => !removed.has(o.id) && !removed.has(o.hostId),
+      );
+      pruneGroups(p);
     });
     set({ selection: [], face: null });
   },
@@ -460,27 +467,22 @@ export const useEditor = create((set, get) => ({
     if (!source.length) return;
     const copies = [],
       groups = [];
+    const sourceProject = selectionProject(
+      s.project,
+      source.map((o) => o.id),
+    );
     for (let i = 1; i <= Math.min(100, count); i++) {
-      const gm = new Map();
-      for (const o of source) {
-        if (o.groupId && !gm.has(o.groupId)) {
-          const id = uid();
-          gm.set(o.groupId, id);
-          groups.push({
-            id,
-            name:
-              (s.project.groups.find((g) => g.id === o.groupId)?.name ||
-                "Group") + " copy",
-          });
-        }
-        copies.push({
-          ...clone(o),
-          id: uid(),
-          name: o.name + " copy",
-          groupId: gm.get(o.groupId) || null,
-          position: o.position.map((n, a) => n + offset[a] * i),
-        });
-      }
+      const items = translateAssembly(
+        instantiateProject(sourceProject, s.project),
+        offset.map((n) => n * i),
+      );
+      items.groups.forEach((g) => {
+        g.name += " copy";
+        if (g.furnitureSpec) g.furnitureSpec.name = g.name;
+      });
+      items.objects.forEach((o) => (o.name += " copy"));
+      copies.push(...items.objects);
+      groups.push(...items.groups);
     }
     get().add({ objects: copies, groups }, "Duplicate selection");
   },
@@ -499,9 +501,7 @@ export const useEditor = create((set, get) => ({
       p.objects.forEach((o) => {
         if (ids.includes(o.id)) o.groupId = g.id;
       });
-      p.groups = p.groups.filter((g) =>
-        p.objects.some((o) => o.groupId === g.id),
-      );
+      pruneGroups(p);
     });
   },
   ungroup: () => {
@@ -510,9 +510,7 @@ export const useEditor = create((set, get) => ({
       p.objects.forEach((o) => {
         if (ids.includes(o.id)) o.groupId = null;
       });
-      p.groups = p.groups.filter((g) =>
-        p.objects.some((o) => o.groupId === g.id),
-      );
+      pruneGroups(p);
     });
   },
   load: (project) => {

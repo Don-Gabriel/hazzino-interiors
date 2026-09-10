@@ -41,7 +41,68 @@ export function boxFeatures(o) {
   };
 }
 export function bounds(o) {
+  if (["mesh", "profile", "line"].includes(o.kind)) {
+    const geometry = objectGeometry(o);
+    geometry.applyMatrix4(objectMatrix(o));
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox.clone();
+    geometry.dispose();
+    return box;
+  }
   return new T.Box3().setFromPoints(boxFeatures(o).corners);
+}
+export function objectGeometry(o) {
+  const size = o.size;
+  let geometry;
+  if (o.kind === "mesh") {
+    geometry = new T.BufferGeometry();
+    geometry.setAttribute(
+      "position",
+      new T.Float32BufferAttribute(o.vertices, 3),
+    );
+    geometry.setIndex(o.triangles);
+    if (o.faceGroups)
+      o.faceGroups.forEach((g, i) => geometry.addGroup(g.start, g.count, i));
+    if (o.uv)
+      geometry.setAttribute("uv", new T.Float32BufferAttribute(o.uv, 2));
+    geometry.scale(...size.map((v, i) => v / o.meshSize[i]));
+    geometry.computeVertexNormals();
+  } else if (["line", "dimension"].includes(o.kind)) {
+    geometry = new T.BufferGeometry().setFromPoints(
+      o.points.map((p) => new T.Vector3(...p)),
+    );
+    if (o.kind === "line") geometry.scale(...size);
+  } else if (o.kind === "cylinder") {
+    geometry = new T.CylinderGeometry(
+      size[0] / 2,
+      size[0] / 2,
+      size[2],
+      o.segments || 48,
+    );
+    geometry.rotateX(Math.PI / 2);
+    geometry.scale(1, size[1] / size[0], 1);
+  } else if (o.kind === "profile") {
+    const shape = new T.Shape(o.profile.map((p) => new T.Vector2(...p)));
+    shape.holes = (o.holes || []).map(
+      (h) => new T.Path(h.map((p) => new T.Vector2(...p))),
+    );
+    geometry = o.isFace
+      ? new T.ShapeGeometry(shape)
+      : new T.ExtrudeGeometry(shape, {
+          depth: size[2],
+          bevelEnabled: false,
+          steps: 1,
+        });
+    if (!o.isFace) geometry.translate(0, 0, -size[2] / 2);
+    const px = o.profile.map((p) => p[0]),
+      py = o.profile.map((p) => p[1]);
+    geometry.scale(
+      size[0] / (Math.max(...px) - Math.min(...px)),
+      size[1] / (Math.max(...py) - Math.min(...py)),
+      1,
+    );
+  } else geometry = openingGeometry(o);
+  return geometry;
 }
 export function openingGeometry(o) {
   const [w, d, h] = o.size,

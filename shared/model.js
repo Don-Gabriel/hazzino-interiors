@@ -1,4 +1,6 @@
 import { validateViews } from "./workspace.js";
+import { meshMetrics, validateMesh } from "./mesh-data.js";
+import { validateFurnitureSpec } from "./furniture.js";
 export const uid = () => globalThis.crypto.randomUUID();
 export const clone = (v) => structuredClone(v);
 export const MATERIALS = [
@@ -86,8 +88,15 @@ export const MATERIALS = [
     rate: 4200,
   },
 ];
+export function materialCatalog(project) {
+  return [
+    ...MATERIALS,
+    ...(Array.isArray(project.materials) ? project.materials : []),
+  ];
+}
 export function materialFor(project, id) {
-  const base = MATERIALS.find((m) => m.id === id) || MATERIALS[0];
+  const base =
+    materialCatalog(project).find((m) => m.id === id) || MATERIALS[0];
   return { ...base, ...(project.materialOverrides?.[base.id] || {}) };
 }
 export function entity(overrides = {}) {
@@ -140,7 +149,7 @@ export function validateProject(p) {
       "Invalid project: expected a Hazzino version 1 project with up to 10,000 objects.",
     );
   const ids = new Set();
-  const kinds = ["box", "cylinder", "line", "profile", "dimension"];
+  const kinds = ["box", "cylinder", "line", "profile", "dimension", "mesh"];
   for (const o of p.objects) {
     if (
       !o ||
@@ -163,6 +172,66 @@ export function validateProject(p) {
         throw Error(`Invalid ${k} on ${o.name}`);
     if (o.size.some((n) => n <= 0))
       throw Error("Dimensions must be greater than zero.");
+    if (o.kind === "mesh") validateMesh(o);
+    if (o.fabrication) {
+      const f = o.fabrication;
+      if (
+        !Number.isInteger(f.thicknessAxis) ||
+        f.thicknessAxis < 0 ||
+        f.thicknessAxis > 2 ||
+        !Number.isInteger(f.edgeBanding) ||
+        f.edgeBanding < 0 ||
+        f.edgeBanding > 4 ||
+        typeof f.grain !== "boolean" ||
+        (f.grainAxis != null &&
+          (!Number.isInteger(f.grainAxis) ||
+            f.grainAxis < 0 ||
+            f.grainAxis > 2 ||
+            f.grainAxis === f.thicknessAxis))
+      )
+        throw Error("Invalid panel fabrication settings");
+    }
+    if (o.mechanism) {
+      const m = o.mechanism,
+        vector = (v) =>
+          Array.isArray(v) &&
+          v.length === 3 &&
+          v.every(
+            (n) =>
+              typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= 1e8,
+          );
+      if (
+        !["hinge", "slide"].includes(m.kind) ||
+        !["pivot", "direction", "closedPosition", "closedRotation"].every((k) =>
+          vector(m[k]),
+        ) ||
+        (m.axis != null && (!vector(m.axis) || Math.hypot(...m.axis) < 0.99)) ||
+        (m.kind === "hinge" &&
+          (!Number.isFinite(m.angle) || Math.abs(m.angle) > 360)) ||
+        (m.kind === "slide" &&
+          (!Number.isFinite(m.travel) || m.travel < 0 || m.travel > 100000))
+      )
+        throw Error("Invalid furniture mechanism");
+    }
+    if (
+      o.holes != null &&
+      (o.kind !== "profile" ||
+        !Array.isArray(o.holes) ||
+        o.holes.length > 100 ||
+        o.holes.some(
+          (h) =>
+            !Array.isArray(h) ||
+            h.length < 3 ||
+            h.length > 500 ||
+            h.some(
+              (v) =>
+                !Array.isArray(v) ||
+                v.length !== 2 ||
+                v.some((n) => !Number.isFinite(n)),
+            ),
+        ))
+    )
+      throw Error("Invalid profile holes");
     if (typeof o.material !== "string" || typeof o.layer !== "string")
       throw Error("Missing material or layer");
     if (o.rate != null && (!Number.isFinite(o.rate) || o.rate < 0))
@@ -248,6 +317,36 @@ export function validateProject(p) {
   )
     throw Error("Missing project structure.");
   validateViews(p.views);
+  if (p.materials != null) {
+    if (!Array.isArray(p.materials) || p.materials.length > 2000)
+      throw Error("Invalid custom materials");
+    const ids = new Set(MATERIALS.map((m) => m.id));
+    for (const m of p.materials) {
+      if (
+        !m ||
+        typeof m.id !== "string" ||
+        ids.has(m.id) ||
+        typeof m.name !== "string" ||
+        m.name.length > 200 ||
+        !/^#[0-9a-f]{6}$/i.test(m.color)
+      )
+        throw Error("Invalid custom material");
+      ids.add(m.id);
+      for (const key of ["roughness", "metalness", "opacity"])
+        if (
+          m[key] != null &&
+          (!Number.isFinite(m[key]) || m[key] < 0 || m[key] > 1)
+        )
+          throw Error("Invalid material " + key);
+      if (
+        m.map != null &&
+        (typeof m.map !== "string" ||
+          m.map.length > 8000000 ||
+          !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(m.map))
+      )
+        throw Error("Invalid material texture");
+    }
+  }
   if (p.materialOverrides != null) {
     if (
       typeof p.materialOverrides !== "object" ||
@@ -256,7 +355,7 @@ export function validateProject(p) {
       throw Error("Invalid material overrides");
     for (const [id, m] of Object.entries(p.materialOverrides)) {
       if (
-        !MATERIALS.some((v) => v.id === id) ||
+        !materialCatalog(p).some((v) => v.id === id) ||
         !m ||
         typeof m !== "object" ||
         Array.isArray(m)
@@ -285,6 +384,17 @@ export function validateProject(p) {
     )
       throw Error("Invalid groups");
     groupIds.add(g.id);
+    if (g.furnitureSpec) validateFurnitureSpec(g.furnitureSpec);
+  }
+  const groupMap = new Map(p.groups.map((g) => [g.id, g]));
+  for (const g of p.groups) {
+    let parent = g.parentId;
+    const seen = new Set([g.id]);
+    while (parent && groupMap.has(parent)) {
+      if (seen.has(parent)) throw Error("Groups cannot contain a cycle");
+      seen.add(parent);
+      parent = groupMap.get(parent).parentId;
+    }
   }
   const layerIds = new Set();
   for (const l of p.layers) {
@@ -298,7 +408,11 @@ export function validateProject(p) {
     layerIds.add(l.id);
   }
   for (const o of p.objects)
-    if (!layerIds.has(o.layer) || (o.groupId && !groupIds.has(o.groupId)))
+    if (
+      !layerIds.has(o.layer) ||
+      (o.groupId && !groupIds.has(o.groupId)) ||
+      (o.furnitureId && !groupIds.has(o.furnitureId))
+    )
       throw Error("Object refers to a missing layer or group");
   if (
     !p.settings ||
@@ -328,6 +442,7 @@ export function polygonArea(points) {
 }
 export function quantities(o) {
   const [x, y, z] = o.size;
+  if (o.kind === "mesh") return meshMetrics(o);
   if (["line", "dimension"].includes(o.kind))
     return { area: 0, volume: 0, edge: 0 };
   if (o.kind === "cylinder") {
@@ -344,7 +459,9 @@ export function quantities(o) {
       sx = x / (Math.max(...px) - Math.min(...px)),
       sy = y / (Math.max(...py) - Math.min(...py)),
       scaled = o.profile.map((p) => [p[0] * sx, p[1] * sy]),
-      a = polygonArea(scaled),
+      a =
+        polygonArea(scaled) -
+        (o.holes || []).reduce((sum, h) => sum + polygonArea(h) * sx * sy, 0),
       per = scaled.reduce(
         (s, p, i) =>
           s +
@@ -355,7 +472,25 @@ export function quantities(o) {
         0,
       );
     return {
-      area: (2 * a + per * z) / 1e6,
+      area:
+        (2 * a +
+          (per +
+            (o.holes || []).reduce(
+              (sum, h) =>
+                sum +
+                h.reduce(
+                  (n, v, i) =>
+                    n +
+                    Math.hypot(
+                      (v[0] - h[(i + 1) % h.length][0]) * sx,
+                      (v[1] - h[(i + 1) % h.length][1]) * sy,
+                    ),
+                  0,
+                ),
+              0,
+            )) *
+            z) /
+        1e6,
       volume: (a * z) / 1e9,
       edge: per / 1000,
     };
@@ -381,7 +516,7 @@ export function bom(project) {
     )
     .map((o) => {
       const q = quantities(o);
-      const m = MATERIALS.find((m) => m.id === o.material) || MATERIALS[0];
+      const m = materialFor(project, o.material);
       return {
         ...q,
         id: o.id,

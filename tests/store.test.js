@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { blankProject, entity } from "../shared/model.js";
+import "fake-indexeddb/auto";
+import { latestRecovery } from "../frontend/recovery.js";
 globalThis.localStorage = {
   values: new Map(),
   getItem(k) {
@@ -9,9 +11,12 @@ globalThis.localStorage = {
   setItem(k, v) {
     this.values.set(k, v);
   },
+  removeItem(k) {
+    this.values.delete(k);
+  },
 };
 const { useEditor } = await import("../frontend/store.js");
-test("create → resize → duplicate → group → undo → redo preserves source data", () => {
+test("create → resize → duplicate → group → undo → redo preserves source data", async () => {
   const s = useEditor.getState();
   s.load(blankProject("Integration test"));
   const o = entity({ size: [600, 18, 2100] });
@@ -29,10 +34,8 @@ test("create → resize → duplicate → group → undo → redo preserves sour
   assert.equal(useEditor.getState().project.groups.length, 0);
   state.redo();
   assert.equal(useEditor.getState().project.groups.length, 1);
-  assert.equal(
-    JSON.parse(localStorage.getItem("hazzino-recovery-v1")).objects.length,
-    2,
-  );
+  await useEditor.getState().recover();
+  assert.equal((await latestRecovery()).objects.length, 2);
 });
 test("invalid edit is atomic and does not pollute undo history", () => {
   const s = useEditor.getState(),

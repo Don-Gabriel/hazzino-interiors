@@ -58,6 +58,8 @@ import { useEditor, download } from "./store.js";
 import { EditorEngine } from "./engine.js";
 import {
   MATERIALS,
+  materialFor,
+  materialCatalog,
   entity,
   furniture,
   bom,
@@ -66,8 +68,15 @@ import {
   validateProject,
 } from "../shared/model.js";
 import { Dialogs } from "./Dialogs.jsx";
+import { FurnitureActions, PanelFabrication } from "./FurnitureBuilder.jsx";
+import { groupObjects } from "../shared/assemblies.js";
 import { handleShortcut } from "./shortcuts.js";
 import { DrawingOptions, extraDrawingTools } from "./DrawingTools.jsx";
+import {
+  OffsetIcon,
+  ModellingOptions,
+  FollowMeIcon,
+} from "./ModellingTools.jsx";
 import {
   StudioMenuBar,
   StudioToolbar,
@@ -76,19 +85,21 @@ import {
   ViewportContextMenu,
 } from "./Workspace.jsx";
 export const toolList = [
-  ["select", MousePointer2, "Select", "V"],
+  ["select", MousePointer2, "Select", "Space"],
   ["line", PenLine, "Line", "L"],
   ["rectangle", RectangleHorizontal, "Rectangle", "R"],
   ["circle", Circle, "Circle", "C"],
   ...extraDrawingTools,
-  ["polygon", PenLine, "Closed profile", "P"],
-  ["pushpull", ArrowUpFromLine, "Push / Pull", "E"],
+  ["polygon", PenLine, "Closed profile", ""],
+  ["pushpull", ArrowUpFromLine, "Push / Pull", "P"],
+  ["offset", OffsetIcon, "Offset", "F"],
+  ["follow-me", FollowMeIcon, "Follow Me", ""],
   ["move", Move3D, "Move", "M"],
   ["rotate", Rotate3D, "Rotate", "Q"],
   ["scale", Scaling, "Resize", "S"],
   ["measure", Ruler, "Dimension", "D"],
   ["paint", PaintBucket, "Paint bucket", "B"],
-  ["eraser", Eraser, "Erase object", ""],
+  ["eraser", Eraser, "Erase object", "E"],
   ["orbit", Orbit, "Orbit", "O"],
   ["pan", Hand, "Pan", "H"],
 ];
@@ -264,7 +275,13 @@ export default function App() {
           className="search-command"
           onClick={() => s.set({ modal: "commands" })}
         >
-          <Search size={15} /> Find a tool or create… <kbd>Ctrl K</kbd>
+          <Search size={15} /> Find a tool… <kbd>Ctrl K</kbd>
+        </button>
+        <button
+          className="outline-dark build-furniture"
+          onClick={() => s.set({ modal: "furniture" })}
+        >
+          <Plus size={16} /> Build furniture
         </button>
         <button
           className="outline-dark"
@@ -291,7 +308,9 @@ export default function App() {
                 className={"tool-button " + (s.tool === id ? "active" : "")}
                 title={key ? `${name} (${key})` : name}
                 aria-label={name}
-                onClick={() => s.set({ tool: id })}
+                onClick={() =>
+                  s.set(id === "follow-me" ? { modal: id } : { tool: id })
+                }
               >
                 <I size={20} />
                 <span>{key}</span>
@@ -346,9 +365,15 @@ export default function App() {
                   <strong>Scene collection</strong>
                   <span>{s.project.objects.length}</span>
                 </div>
-                {s.project.groups.map((g) => (
-                  <TreeGroup key={g.id} group={g} filter={treeSearch} />
-                ))}
+                {s.project.groups
+                  .filter(
+                    (g) =>
+                      !g.parentId ||
+                      !s.project.groups.some((p) => p.id === g.parentId),
+                  )
+                  .map((g) => (
+                    <TreeGroup key={g.id} group={g} filter={treeSearch} />
+                  ))}
                 {s.project.objects
                   .filter(
                     (o) =>
@@ -499,7 +524,7 @@ export default function App() {
               </span>
               <IconButton
                 icon={Focus}
-                label="Fit model (F)"
+                label="Fit model (F3)"
                 onClick={() => s.engine?.fit()}
               />
               <IconButton
@@ -510,6 +535,7 @@ export default function App() {
             </div>
           </div>
           <DrawingOptions />
+          <ModellingOptions />
           <div className="scene-caption">
             <span>DESIGN WORKSPACE</span>
             <h1>{s.project.name.split("·").at(-1).trim()}</h1>
@@ -642,19 +668,21 @@ export default function App() {
     </div>
   );
 }
-function TreeGroup({ group, filter }) {
+function TreeGroup({ group, filter, depth = 0 }) {
   const s = useEditor(),
     [open, setOpen] = useState(group.name !== "Room envelope");
-  const children = s.project.objects.filter(
-    (o) =>
-      o.groupId === group.id &&
-      o.name.toLowerCase().includes(filter.toLowerCase()),
-  );
+  const all = groupObjects(s.project, group.id),
+    children = all.filter(
+      (o) =>
+        o.name.toLowerCase().includes(filter.toLowerCase()) ||
+        group.name.toLowerCase().includes(filter.toLowerCase()),
+    );
+  const nestedGroups = s.project.groups.filter((g) => g.parentId === group.id);
   if (!children.length) return null;
   const selected = children.every((o) => s.selection.includes(o.id)),
     visible = children.some((o) => o.visible);
   return (
-    <div className="tree-group">
+    <div className="tree-group" style={depth ? { marginLeft: 10 } : undefined}>
       <div className={"tree-row group-row " + (selected ? "selected" : "")}>
         <button className="disclosure" onClick={() => setOpen(!open)}>
           {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -675,7 +703,7 @@ function TreeGroup({ group, filter }) {
           onClick={() =>
             s.commit("Toggle group visibility", (p) =>
               p.objects
-                .filter((o) => o.groupId === group.id)
+                .filter((o) => all.some((v) => v.id === o.id))
                 .forEach((o) => (o.visible = !visible)),
             )
           }
@@ -683,8 +711,24 @@ function TreeGroup({ group, filter }) {
           {visible ? <Eye size={12} /> : <EyeOff size={12} />}
         </button>
       </div>
-      {(open || filter) &&
-        children.map((o) => <TreeObject key={o.id} object={o} nested />)}
+      {(open || filter) && (
+        <>
+          {depth < 30 &&
+            nestedGroups.map((g) => (
+              <TreeGroup
+                key={g.id}
+                group={g}
+                filter={filter}
+                depth={depth + 1}
+              />
+            ))}
+          {children
+            .filter((o) => o.groupId === group.id)
+            .map((o) => (
+              <TreeObject key={o.id} object={o} nested />
+            ))}
+        </>
+      )}
     </div>
   );
 }
@@ -740,6 +784,12 @@ function ComponentLibrary() {
         </h2>
         <p>Editable components, down to the last board.</p>
       </div>
+      <button
+        className="primary full"
+        onClick={() => s.set({ modal: "furniture" })}
+      >
+        <Columns3 size={17} /> Furniture studio
+      </button>
       {libraryItems.map(([id, name, desc, I]) => (
         <button
           className="library-card"
@@ -831,6 +881,8 @@ function Properties() {
   };
   return (
     <>
+      <FurnitureActions />
+      <PanelFabrication />
       <div className="object-heading">
         <div className="object-type-icon">
           <Box size={21} />
@@ -957,7 +1009,8 @@ function Properties() {
             className="primary"
             aria-label="Apply push pull"
             disabled={chosen.every(
-              (item) => !["box", "profile"].includes(item.kind),
+              (item) =>
+                !["box", "profile", "mesh", "cylinder"].includes(item.kind),
             )}
             onClick={() => s.engine?.extrude(pull)}
           >
@@ -1004,11 +1057,11 @@ function Properties() {
         >
           <span
             style={{
-              background: MATERIALS.find((m) => m.id === o.material)?.color,
+              background: materialFor(s.project, o.material).color,
             }}
           />
           <div>
-            {MATERIALS.find((m) => m.id === o.material)?.name}
+            {materialFor(s.project, o.material).name}
             <small>Change finish</small>
           </div>
           <ChevronRight size={14} />
@@ -1032,9 +1085,7 @@ function Properties() {
         </label>
         <Numeric
           label="Rate / m²"
-          value={
-            o.rate ?? MATERIALS.find((m) => m.id === o.material)?.rate ?? 0
-          }
+          value={o.rate ?? materialFor(s.project, o.material).rate ?? 0}
           min={0}
           onChange={(n) => s.update(o.id, { rate: n }, "Set material rate")}
         />
@@ -1114,7 +1165,7 @@ function MaterialsPanel() {
         </p>
       </div>
       <div className="material-grid">
-        {MATERIALS.map((m) => (
+        {materialCatalog(s.project).map((m) => (
           <button
             key={m.id}
             onClick={() => {
@@ -1122,21 +1173,7 @@ function MaterialsPanel() {
                 s.notify("Select an object first");
                 return;
               }
-              s.commit("Apply " + m.name, (p) =>
-                p.objects
-                  .filter((o) => s.selection.includes(o.id) && !o.locked)
-                  .forEach((o) => {
-                    if (s.face && o.kind === "box")
-                      o.faceMaterials = {
-                        ...o.faceMaterials,
-                        [s.face.index]: m.id,
-                      };
-                    else {
-                      o.material = m.id;
-                      o.faceMaterials = {};
-                    }
-                  }),
-              );
+              s.applyMaterial(m.id);
             }}
           >
             <div

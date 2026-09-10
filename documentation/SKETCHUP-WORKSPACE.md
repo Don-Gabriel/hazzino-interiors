@@ -2,6 +2,14 @@
 
 Updated 10 September 2026.
 
+## Current furniture delivery
+
+The active requirement is now furniture design. [FURNITURE-STUDIO.md](FURNITURE-STUDIO.md) describes the current builder, machining, production, imports and limitations. It supersedes the initial feature list and verification counts below, which record the earlier desktop-workspace checkpoint.
+
+The current build adds real face Offset and host recess/through-hole editing, signed face Push/Pull with dedicated cursors and numeric input, manifold solid booleans, mitered Follow Me sweeps, GLB/glTF/OBJ/STL/PLY imports, and all eight converted native SKP samples. Nested Outliner groups and per-face imported material groups are supported. Large textured recovery projects use IndexedDB.
+
+Furniture presets cover kitchens, wardrobes, desks, TV units, lofts, shoe racks, bookcases and custom cabinets. They include editable panels/fittings, mixed compartments, moving hinged/sliding/lift-up fronts, kitchen blind corners and worktop cutouts, drilling and pocket geometry, cut lists, hardware schedules, dimensioned part-envelope drawings and guillotine sheet layouts. These are implemented Hazzino capabilities; exact SketchUp parity remains unverified.
+
 Hazzino now has a working desktop-style modelling workspace in its existing green and cream design. This is an initial implementation, not verified feature parity with SketchUp. The reference screenshot, the installed application and extension-provided tools require separate coverage checks.
 
 ## Implemented
@@ -59,8 +67,8 @@ Trimble describes the connector as creating and editing models in a cloud Sketch
 
 The next reference pass needs to expand the remaining submenus and dialogs, inspect individual toolbar commands, and repeat inspection with edges, faces, groups, components and solids selected. Each feature needs an observed behavior and a corresponding Hazzino acceptance check before it can be marked complete.
 
-Known major gaps include SketchUp-style connected edge/face topology and inference; native curve semantics and tangent inference; Follow Me; general solid booleans and intersections; component instances and nested editing; terrain/Sandbox tools; photo matching and two-point perspective; walking and camera positioning; environment and texture-map authoring; configurable shortcuts; arbitrary native section planes; native SKP import/export; LayOut, Warehouse, geolocation and collaboration integrations; and extension compatibility. Some existing Hazzino tools address narrower use cases, such as architectural openings, planar profiles and parametric furniture, without covering the corresponding general SketchUp behavior.
+Known major gaps include SketchUp-style connected edge/face topology and inference; native curve semantics and tangent inference; shared component instances; terrain/Sandbox tools; photo matching and two-point perspective; walking and camera positioning; advanced environment/texture-map authoring; configurable shortcuts; arbitrary native section planes; native SKP import/export; LayOut, live Warehouse, geolocation and collaboration integrations; and extension compatibility. Hazzino's narrower tools do not establish full native equivalence.
 
-The user's next requirements explicitly include Offset, all tools shown in the supplied toolbar image, and SketchUp-equivalent Push/Pull pointer and interaction behavior. Offset is not implemented. Delivery is a web app, with reference `.skp` files in `skpfiles/` and the supplied [3D Warehouse collection](https://3dwarehouse.sketchup.com/collection/3ea90f0b-e9e3-4037-886e-b9a311a0b0d2/3D-Models). The requested deadline is 3 pm IST on 10 September 2026; full parity by that deadline has not been promised. The current instruction is to push to GitHub and publish on Cloudflare, then wait for the user's signal before further modelling changes.
+Delivery is a web app, with reference `.skp` files in `skpfiles/` and the supplied [3D Warehouse collection](https://3dwarehouse.sketchup.com/collection/3ea90f0b-e9e3-4037-886e-b9a311a0b0d2/3D-Models). The user subsequently authorized continued development and narrowed the focus to furniture. The requested deadline is 3 pm IST on 10 September 2026; full SketchUp parity by that deadline has not been promised. GitHub publishing and Cloudflare deployment are authorized.
 
 The screenshot's additional toolbars also need an extension-by-extension inventory. Full visual and functional parity remains unverified.

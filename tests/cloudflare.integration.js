@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { blankProject, wardrobe } from "../shared/model.js";
+import { buildFurniture, defaultFurnitureSpec } from "../shared/furniture.js";
+import { readFile } from "node:fs/promises";
 
 const base = process.env.CLOUDFLARE_TEST_URL || "http://127.0.0.1:8787";
 async function browserWorkspace() {
@@ -50,7 +52,10 @@ test("Cloudflare persists editable models and independent checkpoints", async ()
     const saved = await call("/projects/" + p.id, "PUT", p);
     assert.equal(saved.status, 200);
     assert.equal(saved.body.storageLabel, "Cloudflare");
-    assert.deepEqual((await call("/projects/" + p.id)).body.objects, p.objects);
+    assert.deepEqual(
+      (await call("/projects/" + p.id)).body.objects,
+      JSON.parse(JSON.stringify(p.objects)),
+    );
     version = await call("/projects/" + p.id + "/versions", "POST", {
       name: "Before edit",
     });
@@ -170,5 +175,48 @@ test("Large Unicode project data survives chunk storage and checkpoints", async 
     );
   } finally {
     await call("/projects/" + p.id, "DELETE");
+  }
+});
+test("Cloudflare round-trips furniture configurations, moving fronts and textured native samples", async () => {
+  const call = await browserWorkspace(),
+    p = {
+      ...blankProject("Furniture cloud QA"),
+      ...buildFurniture({
+        ...defaultFurnitureSpec("wardrobe"),
+        frontStyle: "sliding",
+        open: 1,
+      }),
+    };
+  try {
+    assert.equal((await call("/projects/" + p.id, "PUT", p)).status, 200);
+    assert.deepEqual(
+      (await call("/projects/" + p.id)).body.objects,
+      JSON.parse(JSON.stringify(p.objects)),
+    );
+    assert.deepEqual((await call("/projects/" + p.id)).body.groups, p.groups);
+  } finally {
+    await call("/projects/" + p.id, "DELETE");
+  }
+  const sample = JSON.parse(
+    await readFile(
+      new URL(
+        "../public/models/cooktop-base-cabinet-251001.hazzino.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
+  sample.id = crypto.randomUUID();
+  sample.name = "Textured cabinet cloud QA";
+  try {
+    assert.equal(
+      (await call("/projects/" + sample.id, "PUT", sample)).status,
+      200,
+    );
+    const reopened = (await call("/projects/" + sample.id)).body;
+    assert.deepEqual(reopened.materials, sample.materials);
+    assert.deepEqual(reopened.objects, sample.objects);
+  } finally {
+    await call("/projects/" + sample.id, "DELETE");
   }
 });

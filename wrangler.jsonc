@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hazzino-interiors",
+  "account_id": "36587a32c9548760108c7088d148d10d",
   "main": "cloudflare/worker.js",
   "compatibility_date": "2026-09-10",
   "assets": {

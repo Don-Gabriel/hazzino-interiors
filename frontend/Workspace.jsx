@@ -39,12 +39,14 @@ import {
   ArrowUpFromLine,
   MousePointer2,
   Eraser,
+  Warehouse,
 } from "lucide-react";
 import { useEditor, WORKSPACE_DEFAULTS } from "./store.js";
-import { MATERIALS, materialFor } from "../shared/model.js";
+import { MATERIALS, materialFor, materialCatalog } from "../shared/model.js";
 import { DISPLAY_DEFAULTS, DISPLAY_STYLES } from "../shared/workspace.js";
 import { editorMenus, flattenCommands, PANEL_NAMES } from "./commands.js";
 import { DRAWING_INSTRUCTIONS, TwoPointArcIcon } from "./DrawingTools.jsx";
+import { OffsetIcon, FollowMeIcon } from "./ModellingTools.jsx";
 
 function ToolButton({ icon: Icon, label, onClick, active, disabled }) {
   return (
@@ -252,10 +254,14 @@ export function StudioToolbar() {
     ],
     [
       [ArrowUpFromLine, "Push / Pull", "pushpull"],
+      [OffsetIcon, "Offset", "offset"],
+      [FollowMeIcon, "Follow Me", () => s.set({ modal: "follow-me" })],
       [Move3D, "Move", "move"],
       [Rotate3D, "Rotate", "rotate"],
       [Scaling, "Scale", "scale"],
       [PaintBucket, "Paint bucket", "paint"],
+      [Layers, "Solid tools", () => s.set({ modal: "solid-tools" })],
+      [Warehouse, "3D model library", () => s.set({ modal: "model-library" })],
     ],
     [
       [Orbit, "Orbit", "orbit"],
@@ -484,20 +490,20 @@ export function MaterialEditor() {
         />
       </div>
       <div className="finish-swatches">
-        {MATERIALS.filter((v) =>
-          v.name.toLowerCase().includes(query.toLowerCase()),
-        ).map((v) => (
-          <button
-            key={v.id}
-            aria-label={"Apply " + v.name}
-            title={v.name}
-            className={id === v.id ? "active" : ""}
-            onClick={() => s.applyMaterial(v.id)}
-          >
-            <i style={{ background: materialFor(s.project, v.id).color }} />
-            {id === v.id && <Check size={13} />}
-          </button>
-        ))}
+        {materialCatalog(s.project)
+          .filter((v) => v.name.toLowerCase().includes(query.toLowerCase()))
+          .map((v) => (
+            <button
+              key={v.id}
+              aria-label={"Apply " + v.name}
+              title={v.name}
+              className={id === v.id ? "active" : ""}
+              onClick={() => s.applyMaterial(v.id)}
+            >
+              <i style={{ background: materialFor(s.project, v.id).color }} />
+              {id === v.id && <Check size={13} />}
+            </button>
+          ))}
       </div>
       <p className="tray-note">
         {s.selection.length

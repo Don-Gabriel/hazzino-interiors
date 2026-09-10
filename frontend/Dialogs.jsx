@@ -38,6 +38,11 @@ import { shortcutGroups } from "./shortcuts.js";
 import { Hospital } from "./Hospital.jsx";
 import { WorkspaceSettings } from "./Workspace.jsx";
 import { editorMenus, flattenCommands } from "./commands.js";
+import { SolidToolsDialog, FollowMeDialog } from "./ModellingTools.jsx";
+import { ModelImportDialog } from "./ModelImport.jsx";
+import { ModelLibraryDialog } from "./ModelLibrary.jsx";
+import { FurnitureBuilder, ProductionDialog } from "./FurnitureBuilder.jsx";
+import { MachiningDialog } from "./MachiningDialog.jsx";
 export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   return (
     <div
@@ -63,6 +68,24 @@ export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   );
 }
 export function Dialogs({ kind, close }) {
+  if (kind === "machining") return <MachiningDialog close={close} />;
+  if (kind === "production") return <ProductionDialog close={close} />;
+  if (kind === "furniture-edit") return <FurnitureBuilder close={close} edit />;
+  if (kind === "furniture" || kind.startsWith("furniture:"))
+    return (
+      <FurnitureBuilder close={close} type={kind.split(":")[1] || "wardrobe"} />
+    );
+  if (["template:wardrobe", "template:shelf", "template:desk"].includes(kind))
+    return (
+      <FurnitureBuilder
+        close={close}
+        type={kind === "template:shelf" ? "bookcase" : kind.split(":")[1]}
+      />
+    );
+  if (kind === "model-library") return <ModelLibraryDialog close={close} />;
+  if (kind === "import-model") return <ModelImportDialog close={close} />;
+  if (kind === "follow-me") return <FollowMeDialog close={close} />;
+  if (kind === "solid-tools") return <SolidToolsDialog close={close} />;
   if (kind === "workspace-settings") return <WorkspaceSettings close={close} />;
   if (kind === "hospital") return <Hospital close={close} />;
   if (kind === "health") return <HealthDialog close={close} />;
@@ -645,7 +668,8 @@ function Projects({ close }) {
   const s = useEditor(),
     [projects, setProjects] = useState([]),
     [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
+    [loading, setLoading] = useState(true),
+    [recovery, setRecovery] = useState([]);
   const refresh = () =>
     fetch("/api/projects")
       .then(async (r) => {
@@ -658,6 +682,7 @@ function Projects({ close }) {
       .finally(() => setLoading(false));
   useEffect(() => {
     refresh();
+    localProjects().then(setRecovery);
   }, []);
   return (
     <Dialog
@@ -691,9 +716,9 @@ function Projects({ close }) {
         )}
         <details style={{ marginBottom: 20 }}>
           <summary style={{ cursor: "pointer", color: "#718a60" }}>
-            Browser recovery copies ({localProjects().length})
+            Browser recovery copies ({recovery.length})
           </summary>
-          {localProjects().map((p) => (
+          {recovery.map((p) => (
             <div className="version-row" key={p.id}>
               <FileJson size={16} />
               <span>
@@ -702,9 +727,9 @@ function Projects({ close }) {
               </span>
               <button
                 className="secondary"
-                onClick={() => {
+                onClick={async () => {
                   try {
-                    s.load(localProject(p.id));
+                    s.load(await localProject(p.id));
                   } catch (e) {
                     setError(e.message);
                   }

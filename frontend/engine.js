@@ -18,7 +18,17 @@ import {
   boxFeatures,
   extrudeObject,
   openingGeometry,
+  objectGeometry,
 } from "../shared/geometry.js";
+import {
+  initKernel,
+  booleanObjects,
+  offsetFace,
+  faceRegion,
+  weldedGeometry,
+  pushPullRegion,
+} from "../shared/solid-kernel.js";
+import { TOOL_CURSORS } from "./tool-cursors.js";
 import { useEditor, download } from "./store.js";
 T.Object3D.DEFAULT_UP.set(0, 0, 1);
 const rad = (n) => (n * Math.PI) / 180,
@@ -108,6 +118,16 @@ export class EditorEngine {
     this.scene.add(this.marker);
     this.onDown = (e) => {
       this.down = [e.clientX, e.clientY];
+      if (
+        e.button === 0 &&
+        ["pushpull", "offset"].includes(useEditor.getState().tool)
+      ) {
+        if (!this.operation) {
+          this.startOperation(e);
+          if (this.operation) this.operation.startedOnDown = true;
+        } else this.operation.commitOnUp = true;
+        return;
+      }
       if (e.button === 0 && useEditor.getState().tool === "freehand") {
         this.cancelDraw();
         const hit = this.workPoint(e, false);
@@ -119,6 +139,18 @@ export class EditorEngine {
       }
     };
     this.onUp = (e) => {
+      if (e.button === 0 && this.operation) {
+        const moved =
+          this.down &&
+          Math.hypot(e.clientX - this.down[0], e.clientY - this.down[1]) > 5;
+        if (
+          this.operation.commitOnUp ||
+          (this.operation.startedOnDown && moved)
+        )
+          this.finishOperation();
+        else this.operation.startedOnDown = false;
+        return;
+      }
       if (this.freehandActive && e.button === 0) {
         this.sampleStroke(e);
         this.finishStroke();
@@ -158,6 +190,7 @@ export class EditorEngine {
     this.resize.observe(container);
     this.unsubscribe = useEditor.subscribe((s, prev) => {
       if (s.project !== prev.project) {
+        if (this.operation) this.cancelDraw();
         this.rebuild();
         if (s.project.settings.grid !== prev.project.settings.grid)
           this.makeGrid();
@@ -176,12 +209,16 @@ export class EditorEngine {
         s.project.id !== prev.project.id
       ) {
         this.cancelDraw();
-        this.controls.enableRotate = !DRAWING_TOOLS.includes(s.tool);
+        this.controls.enableRotate = ![
+          ...DRAWING_TOOLS,
+          "pushpull",
+          "offset",
+        ].includes(s.tool);
         this.controls.mouseButtons.LEFT =
           s.tool === "pan" ? T.MOUSE.PAN : T.MOUSE.ROTATE;
-        this.renderer.domElement.style.cursor = DRAWING_TOOLS.includes(s.tool)
-          ? "crosshair"
-          : "default";
+        this.renderer.domElement.style.cursor =
+          TOOL_CURSORS[s.tool] ||
+          (DRAWING_TOOLS.includes(s.tool) ? "crosshair" : "default");
       }
       if (
         s.project !== prev.project ||
@@ -266,6 +303,18 @@ export class EditorEngine {
     });
   }
   texture(mat) {
+    if (mat.map) {
+      const cached = this.textures.get(mat.id);
+      if (cached?.userData.source === mat.map) return cached;
+      cached?.dispose();
+      const texture = new T.TextureLoader().load(mat.map);
+      texture.colorSpace = T.SRGBColorSpace;
+      texture.flipY = mat.textureFlipY ?? false;
+      texture.wrapS = texture.wrapT = T.RepeatWrapping;
+      texture.userData.source = mat.map;
+      this.textures.set(mat.id, texture);
+      return texture;
+    }
     if (!mat.grain) return null;
     const cached = this.textures.get(mat.id);
     if (cached?.userData.color === mat.color) return cached;
@@ -296,7 +345,7 @@ export class EditorEngine {
     const m = materialFor(useEditor.getState().project, id);
     const map = this.texture(m);
     const mat = new T.MeshStandardMaterial({
-      color: map ? "#ffffff" : m.color,
+      color: map && m.grain ? "#ffffff" : m.color,
       map,
       roughness: m.roughness,
       metalness: m.metalness || 0,
@@ -334,39 +383,28 @@ export class EditorEngine {
         mesh.scale.fromArray(o.size);
       }
     } else {
-      let geometry;
-      if (o.kind === "cylinder") {
-        geometry = new T.CylinderGeometry(
-          size[0] / 2,
-          size[0] / 2,
-          size[2],
-          48,
-        );
-        geometry.rotateX(Math.PI / 2);
-        geometry.scale(1, size[1] / size[0], 1);
-      } else if (o.kind === "profile") {
-        const shape = new T.Shape(o.profile.map((p) => new T.Vector2(...p)));
-        geometry = new T.ExtrudeGeometry(shape, {
-          depth: size[2],
-          bevelEnabled: false,
-          steps: 1,
-        });
-        geometry.translate(0, 0, -size[2] / 2);
-        const px = o.profile.map((p) => p[0]),
-          py = o.profile.map((p) => p[1]);
-        geometry.scale(
-          size[0] / (Math.max(...px) - Math.min(...px)),
-          size[1] / (Math.max(...py) - Math.min(...py)),
-          1,
-        );
-      } else geometry = openingGeometry(o);
-      const mats =
-        o.kind === "box"
+      const geometry = objectGeometry(o);
+      const mats = o.faceGroups
+        ? o.faceGroups.map((g, i) =>
+            this.material(o.faceMaterials?.[i] || g.material),
+          )
+        : o.kind === "box"
           ? Array.from({ length: 6 }, (_, i) =>
               this.material(o.faceMaterials?.[i] || o.material),
             )
           : this.material(o.material);
       mesh = new T.Mesh(geometry, mats);
+      if (o.kind === "mesh")
+        for (const material of Array.isArray(mats) ? mats : [mats])
+          material.flatShading = !o.smooth;
+      if (o.isFace) {
+        for (const material of Array.isArray(mats) ? mats : [mats]) {
+          material.polygonOffset = true;
+          material.polygonOffsetFactor = -2;
+          material.polygonOffsetUnits = -2;
+          if (o.hostId) material.depthWrite = false;
+        }
+      }
       mesh.position.fromArray(o.position);
       mesh.rotation.set(...o.rotation.map(rad));
       mesh.castShadow = true;
@@ -380,6 +418,7 @@ export class EditorEngine {
         }),
       );
       edges.userData.edge = true;
+      edges.renderOrder = 2;
       mesh.add(edges);
     }
     mesh.userData.id = o.id;
@@ -659,10 +698,18 @@ export class EditorEngine {
   }
   pick(e) {
     this.rayAt(e);
-    return this.ray.intersectObjects(
+    const hits = this.ray.intersectObjects(
       [...this.objects.values()].filter((m) => m.visible),
       false,
-    )[0];
+    );
+    // Coplanar face subdivisions take precedence over their underlying solid.
+    const near = hits.filter((hit) => hit.distance - hits[0].distance < 0.001);
+    const objects = useEditor.getState().project.objects;
+    return (
+      near.find(
+        (hit) => objects.find((o) => o.id === hit.object.userData.id)?.hostId,
+      ) || hits[0]
+    );
   }
   workPoint(e, allowSnap = true) {
     this.rayAt(e);
@@ -769,6 +816,14 @@ export class EditorEngine {
   }
   pointer(e) {
     const s = useEditor.getState();
+    if (this.operation) {
+      this.updateOperation(e);
+      return;
+    }
+    if (["pushpull", "offset"].includes(s.tool)) {
+      this.hoverFace(e);
+      return;
+    }
     if (!DRAWING_TOOLS.includes(s.tool)) {
       this.marker.visible = false;
       return;
@@ -974,6 +1029,7 @@ export class EditorEngine {
       const face = hit.face
         ? {
             index: hit.face.materialIndex,
+            triangle: hit.faceIndex,
             normal: hit.face.normal.toArray(),
             point: hit.point.toArray(),
           }
@@ -1083,6 +1139,14 @@ export class EditorEngine {
     this.cancelDraw();
   }
   cancelDraw() {
+    if (this.operation) {
+      this.restoreOperation();
+      this.operation = null;
+      useEditor
+        .getState()
+        .set({ operationValue: null, operationActive: false });
+    }
+    this.hoverKey = null;
     this.freehandActive = false;
     this.points = [];
     this.anchors = [];
@@ -1091,12 +1155,325 @@ export class EditorEngine {
     this.marker.visible = false;
   }
   extrude(amount) {
+    if (this.operation) {
+      this.finishOperation(amount);
+      return;
+    }
     const s = useEditor.getState();
-    s.commit("Push / Pull " + amount + " mm", (p) => {
-      p.objects = p.objects.map((o) =>
-        s.selection.includes(o.id) ? extrudeObject(o, amount, s.face) : o,
+    try {
+      const sources = s.project.objects.filter(
+        (o) => s.selection.includes(o.id) && !o.locked,
       );
+      if (new Set(sources.map((o) => o.hostId || o.id)).size !== sources.length)
+        throw Error("Select one face of each solid for Push / Pull");
+      const updates = sources
+        .filter((o) => s.selection.includes(o.id) && !o.locked)
+        .map((o) => ({
+          id: o.hostId || o.id,
+          result: this.pulledObject(o, amount, s.face),
+        }));
+      s.commit("Push / Pull " + amount + " mm", (p) => {
+        for (const { id, result } of updates) {
+          p.objects = p.objects.filter((o) => o.hostId !== id);
+          if (result)
+            Object.assign(
+              p.objects.find((o) => o.id === id),
+              result,
+              { id },
+            );
+          else p.objects = p.objects.filter((o) => o.id !== id);
+        }
+      });
+    } catch (error) {
+      s.notify(error.message);
+    }
+  }
+
+  pulledObject(o, amount, face) {
+    if (o.hostId) {
+      const host = useEditor
+        .getState()
+        .project.objects.find((v) => v.id === o.hostId);
+      if (!host) throw Error("The parent solid is missing");
+      return pushPullRegion(host, face?.triangle || 0, amount, o);
+    }
+    if (o.isFace || (o.kind === "box" && !o.openings?.length))
+      return extrudeObject(o, amount, face);
+    return pushPullRegion(o, face?.triangle || 0, amount);
+  }
+
+  async solidOperation(operation) {
+    const before = useEditor.getState(),
+      project = before.project;
+    const sources = before.selection
+      .map((id) => project.objects.find((o) => o.id === id))
+      .filter(Boolean);
+    try {
+      await initKernel();
+      const results = booleanObjects(sources, operation);
+      if (useEditor.getState().project !== project)
+        throw Error("The design changed. Select the solids and try again.");
+      before.commit("Solid " + operation, (p) => {
+        const removed = new Set(
+          (operation === "trim" ? sources.slice(0, 1) : sources).map(
+            (o) => o.id,
+          ),
+        );
+        p.objects = p.objects.filter(
+          (o) => !removed.has(o.id) && !removed.has(o.hostId),
+        );
+        p.objects.push(...results);
+        p.groups = p.groups.filter((g) =>
+          p.objects.some((o) => o.groupId === g.id),
+        );
+      });
+      before.set({
+        selection: results.map((o) => o.id),
+        face: null,
+        modal: null,
+      });
+    } catch (error) {
+      before.notify(error.message);
+    }
+  }
+
+  hoverFace(e) {
+    const hit = this.pick(e),
+      key = hit?.object.userData.id + ":" + hit?.faceIndex;
+    if (this.hoverKey === key) return;
+    this.hoverKey = key;
+    this.disposeGroup(this.drawGroup);
+    this.drawGroup.clear();
+    if (!hit?.face) return;
+    const source = useEditor
+      .getState()
+      .project.objects.find((o) => o.id === hit.object.userData.id);
+    if (!source || source.locked) return;
+    try {
+      const region = faceRegion(source, hit.faceIndex),
+        geometry = weldedGeometry(source);
+      const indices = Array.from(geometry.index.array);
+      geometry.setIndex(
+        region.triangles.flatMap((t) => indices.slice(t * 3, t * 3 + 3)),
+      );
+      const material = new T.MeshBasicMaterial({
+        color: 0x25876b,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false,
+        side: T.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -3,
+        polygonOffsetUnits: -3,
+      });
+      material.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <dithering_fragment>",
+          "#include <dithering_fragment>\nif(mod(floor(gl_FragCoord.x)+floor(gl_FragCoord.y),3.0)>0.5) discard;",
+        );
+      };
+      this.drawGroup.add(new T.Mesh(geometry, material));
+    } catch {}
+  }
+
+  startOperation(e) {
+    const s = useEditor.getState(),
+      hit = this.pick(e);
+    if (!hit?.face) return;
+    const source = s.project.objects.find(
+      (o) => o.id === hit.object.userData.id,
+    );
+    if (!source || source.locked) return;
+    try {
+      const region = faceRegion(source, hit.faceIndex),
+        face = {
+          index: hit.face.materialIndex,
+          triangle: hit.faceIndex,
+          normal: hit.face.normal.toArray(),
+          point: hit.point.toArray(),
+        };
+      this.cancelDraw();
+      s.select(source.id, false, face);
+      const op = {
+        kind: s.tool,
+        source: clone(source),
+        face,
+        region,
+        anchor: hit.point.clone(),
+        amount: 0,
+      };
+      if (s.tool === "offset") {
+        let nearest = Infinity;
+        for (const loop of region.loops)
+          for (let i = 0; i < loop.length; i++) {
+            const a = region.origin
+              .clone()
+              .addScaledVector(region.u, loop[i][0])
+              .addScaledVector(region.v, loop[i][1]);
+            const next = loop[(i + 1) % loop.length],
+              b = region.origin
+                .clone()
+                .addScaledVector(region.u, next[0])
+                .addScaledVector(region.v, next[1]);
+            const d = new T.Line3(a, b)
+              .closestPointToPoint(hit.point, true, new T.Vector3())
+              .distanceTo(hit.point);
+            if (d < nearest) {
+              nearest = d;
+              op.direction = b.sub(a).normalize().cross(region.n).normalize();
+            }
+          }
+      }
+      this.operation = op;
+      s.set({ operationValue: 0, operationActive: true, measurementDraft: "" });
+      s.notify(
+        s.tool === "offset"
+          ? "Move to offset the face. Click or type a distance to finish."
+          : "Move to push or pull. Click or type a distance to finish.",
+      );
+    } catch (error) {
+      s.notify(error.message);
+    }
+  }
+
+  updateOperation(e) {
+    const op = this.operation,
+      s = useEditor.getState();
+    if (!op) return;
+    this.rayAt(e);
+    let amount = 0;
+    if (op.kind === "offset") {
+      const point = this.ray.ray.intersectPlane(
+        new T.Plane().setFromNormalAndCoplanarPoint(op.region.n, op.anchor),
+        new T.Vector3(),
+      );
+      if (!point) return;
+      amount = point.sub(op.anchor).dot(op.direction);
+    } else {
+      const n = op.region.n,
+        d = this.ray.ray.direction,
+        w = this.ray.ray.origin.clone().sub(op.anchor),
+        dot = d.dot(n),
+        denom = 1 - dot * dot;
+      if (denom < 0.001) return;
+      amount = (n.dot(w) - dot * d.dot(w)) / denom;
+    }
+    if (s.snapEnabled)
+      amount =
+        Math.round(amount / s.project.settings.snap) * s.project.settings.snap;
+    if (amount === op.amount) return;
+    op.amount = amount;
+    s.set({ operationValue: amount });
+    this.previewOperation();
+  }
+
+  previewOperation() {
+    const op = this.operation;
+    if (!op) return;
+    this.restoreOperation();
+    this.disposeGroup(this.drawGroup);
+    this.drawGroup.clear();
+    op.results = null;
+    if (Math.abs(op.amount) < 0.001) return;
+    try {
+      const results =
+        op.kind === "offset"
+          ? offsetFace(op.source, op.face.triangle, op.amount)
+          : [this.pulledObject(op.source, op.amount, op.face)].filter(Boolean);
+      results.forEach((o) => this.drawGroup.add(this.mesh(o)));
+      op.hidden = [];
+      const hostId = op.source.hostId || op.source.id;
+      for (const o of useEditor.getState().project.objects) {
+        if (
+          o.id === op.source.id ||
+          (op.kind === "pushpull" && (o.id === hostId || o.hostId === hostId))
+        ) {
+          const mesh = this.objects.get(o.id);
+          if (mesh?.visible && !(op.kind === "offset" && !op.source.isFace)) {
+            mesh.visible = false;
+            op.hidden.push(o.id);
+          }
+        }
+      }
+      op.results = results;
+      op.validAmount = op.amount;
+    } catch (error) {
+      useEditor.getState().notify(error.message);
+      op.results = null;
+    }
+  }
+
+  restoreOperation() {
+    for (const id of this.operation?.hidden || []) {
+      const mesh = this.objects.get(id);
+      if (mesh) mesh.visible = true;
+    }
+    if (this.operation) this.operation.hidden = [];
+  }
+
+  finishOperation(amount) {
+    const op = this.operation;
+    if (!op) return;
+    if (amount != null) {
+      op.amount = amount;
+      this.previewOperation();
+    }
+    if (
+      !op.results ||
+      op.validAmount !== op.amount ||
+      Math.abs(op.amount) < 0.001
+    )
+      return;
+    const s = useEditor.getState(),
+      results = op.results,
+      kind = op.kind,
+      targetId = op.source.hostId || op.source.id;
+    this.cancelDraw();
+    s.commit(
+      (kind === "offset" ? "Offset " : "Push / Pull ") + op.amount + " mm",
+      (p) => {
+        if (kind === "pushpull") {
+          p.objects = p.objects.filter(
+            (o) => o.id !== targetId && o.hostId !== targetId,
+          );
+          results.forEach((o) => p.objects.push({ ...o, id: targetId }));
+        } else {
+          if (op.source.isFace)
+            p.objects = p.objects.filter((o) => o.id !== op.source.id);
+          p.objects.push(...results);
+        }
+      },
+    );
+    s.set({
+      selection:
+        kind === "pushpull"
+          ? results.length
+            ? [targetId]
+            : []
+          : results.map((o) => o.id),
+      face: null,
+      lastOperation: { kind, distance: op.amount },
     });
+  }
+
+  offsetSelection(distance) {
+    const s = useEditor.getState(),
+      source = s.project.objects.find((o) => o.id === s.selection[0]);
+    if (!source) {
+      s.notify("Select a face to offset");
+      return;
+    }
+    try {
+      const results = offsetFace(source, s.face?.triangle || 0, distance);
+      s.commit("Offset " + distance + " mm", (p) => {
+        if (source.isFace)
+          p.objects = p.objects.filter((o) => o.id !== source.id);
+        p.objects.push(...results);
+      });
+      s.set({ selection: results.map((o) => o.id), face: null });
+    } catch (error) {
+      s.notify(error.message);
+    }
   }
 
   fit(selectionOnly = false) {

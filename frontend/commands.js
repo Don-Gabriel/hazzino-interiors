@@ -1,5 +1,10 @@
 import { useEditor, WORKSPACE_DEFAULTS, download } from "./store.js";
 import { DISPLAY_STYLES } from "../shared/workspace.js";
+import {
+  FURNITURE_TYPES,
+  selectedFurniture,
+  setFurnitureOpen,
+} from "../shared/furniture.js";
 
 export const PANEL_NAMES = {
   properties: "Entity Info",
@@ -72,9 +77,59 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
       tool("circle", "Circle", "C"),
       tool("regular-polygon", "Polygon"),
     ]),
-    tool("polygon", "Closed profile", "P"),
+    tool("polygon", "Closed profile"),
   ];
   return [
+    submenu("furniture", "Furniture", [
+      ...FURNITURE_TYPES.map(([id, label]) =>
+        modal(
+          "build-" + id,
+          "Build " + label.toLowerCase() + "…",
+          "furniture:" + id,
+        ),
+      ),
+      separator,
+      modal("edit-furniture", "Edit selected furniture…", "furniture-edit", {
+        disabled: selectedFurniture(s.project, s.selection).length !== 1,
+      }),
+      action(
+        "select-furniture",
+        "Select whole furniture",
+        () => {
+          const ids = new Set(
+            selectedFurniture(s.project, s.selection).map((g) => g.id),
+          );
+          s.set({
+            selection: s.project.objects
+              .filter((o) => ids.has(o.furnitureId))
+              .map((o) => o.id),
+            face: null,
+          });
+        },
+        { disabled: !selectedFurniture(s.project, s.selection).length },
+      ),
+      ...[
+        [1, "Open"],
+        [0, "Close"],
+      ].map(([amount, label]) =>
+        action(
+          "fronts-" + amount,
+          label + " doors and drawers",
+          () =>
+            s.commit(label + " furniture fronts", (p) =>
+              selectedFurniture(p, s.selection).forEach((g) =>
+                setFurnitureOpen(p, g.id, amount),
+              ),
+            ),
+          { disabled: !selectedFurniture(s.project, s.selection).length },
+        ),
+      ),
+      separator,
+      modal("production", "Cut list, drawings & sheet layout…", "production"),
+      modal("machining", "Panel drilling, pockets & grooves…", "machining", {
+        disabled: s.selection.length !== 1,
+      }),
+    ]),
     submenu("file", "File", [
       modal("new-project", "New project…", "new", { shortcut: "Ctrl Alt N" }),
       modal("open-project", "Open projects…", "projects", {
@@ -91,6 +146,8 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
         () => options.importProject?.(),
         { disabled: !options.importProject },
       ),
+      modal("import-model", "Import 3D model…", "import-model"),
+      modal("model-library", "3D model library…", "model-library"),
       submenu("export", "Export", [
         action("export-json", "Editable project · JSON", () =>
           download(
@@ -258,7 +315,7 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
         shortcut: "Num −",
       }),
       action("zoom-extents", "Zoom extents", () => s.engine?.fit(), {
-        shortcut: "F",
+        shortcut: "F3",
       }),
       action("zoom-selection", "Zoom selection", () => s.engine?.fit(true), {
         disabled: !selected,
@@ -276,11 +333,28 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
       modal("create-room", "Room envelope…", "template:room"),
     ]),
     submenu("tools", "Tools", [
-      tool("select", "Select", "V"),
-      tool("eraser", "Erase object", "Delete"),
+      tool("select", "Select", "Space"),
+      tool("eraser", "Erase object", "E"),
       tool("paint", "Paint bucket", "B"),
       separator,
-      tool("pushpull", "Push / Pull", "E"),
+      tool("pushpull", "Push / Pull", "P"),
+      tool("offset", "Offset", "F"),
+      modal("follow-me", "Follow Me…", "follow-me"),
+      submenu("solid-operations", "Solid tools", [
+        ...[
+          ["union", "Union"],
+          ["subtract", "Subtract"],
+          ["intersect", "Intersect"],
+          ["trim", "Trim"],
+          ["split", "Split"],
+          ["outer-shell", "Outer shell"],
+        ].map(([id, label]) =>
+          action("solid-" + id, label, () => s.engine?.solidOperation(id), {
+            disabled: s.selection.length < 2,
+          }),
+        ),
+        modal("solid-tools-panel", "Solid tools panel…", "solid-tools"),
+      ]),
       tool("move", "Move", "M"),
       tool("rotate", "Rotate", "Q"),
       tool("scale", "Scale", "S"),

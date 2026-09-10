@@ -1,4 +1,5 @@
 import { useEditor } from "./store.js";
+import { parseDistance } from "../shared/measurements.js";
 export const shortcutGroups = [
   {
     name: "Edit",
@@ -29,10 +30,13 @@ export const shortcutGroups = [
   {
     name: "Modelling tools",
     items: [
-      ["V / L / R / P", "Select / line / rectangle / closed profile"],
+      ["Space / L / R", "Select / line / rectangle"],
       ["C / B / O / H", "Circle / paint bucket / orbit / pan"],
       ["A", "2 Point Arc: start, end, then bulge"],
-      ["E / M / Q / S / D", "Push-pull / move / rotate / resize / dimension"],
+      [
+        "P / E / M / Q / S / D",
+        "Push-pull / eraser / move / rotate / resize / dimension",
+      ],
       ["X / Y / Z", "Toggle axis constraint"],
       ["Enter", "Finish closed profile"],
       ["Esc", "Cancel drawing or close dialog"],
@@ -45,7 +49,8 @@ export const shortcutGroups = [
   {
     name: "Function keys",
     items: [
-      ["F3 / F", "Fit complete model"],
+      ["F3", "Fit complete model"],
+      ["F", "Offset"],
       ["F4", "Properties / materials panel"],
       ["F6", "Cycle XY / XZ / YZ drawing planes"],
       ["F7", "Show / hide grid"],
@@ -105,6 +110,30 @@ export function handleShortcut(e, options = {}) {
   }
   if (editing) return false;
   if (s.modal) return false;
+  if (
+    s.operationActive &&
+    !ctrl &&
+    (/^[0-9.\-]$/.test(key) ||
+      (s.measurementDraft && /^[a-z /'"]$/.test(key)) ||
+      ["backspace", "enter"].includes(key))
+  ) {
+    e.preventDefault();
+    if (key === "enter") {
+      try {
+        if (s.measurementDraft)
+          s.engine?.finishOperation(parseDistance(s.measurementDraft));
+      } catch (error) {
+        s.notify(error.message);
+      }
+    } else
+      s.set({
+        measurementDraft:
+          key === "backspace"
+            ? s.measurementDraft.slice(0, -1)
+            : s.measurementDraft + key,
+      });
+    return true;
+  }
   let action;
   // Physical numpad codes work with Num Lock on or off; numeric text entry remains native.
   if (code.startsWith("Numpad")) {
@@ -198,6 +227,7 @@ export function handleShortcut(e, options = {}) {
     if (!action && !e.altKey) {
       const tool = {
         v: "select",
+        " ": "select",
         l: "line",
         r: "rectangle",
         c: "circle",
@@ -205,17 +235,17 @@ export function handleShortcut(e, options = {}) {
         b: "paint",
         o: "orbit",
         h: "pan",
-        p: "polygon",
-        e: "pushpull",
+        p: "pushpull",
+        e: "eraser",
         m: "move",
         q: "rotate",
         s: "scale",
         d: "measure",
+        f: "offset",
       }[key];
       if (tool) action = () => s.set({ tool, status: "Tool · " + tool });
       else if (key === "delete" || key === "backspace") action = s.remove;
       else if (key === "enter") action = () => s.engine?.finishPolygon();
-      else if (key === "f") action = () => s.engine?.fit();
       else if (key === "?") action = () => s.set({ modal: "help" });
       else if (["x", "y", "z"].includes(key))
         action = () =>
