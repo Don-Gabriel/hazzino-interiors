@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { DISPLAY_DEFAULTS } from "../shared/workspace.js";
 import {
   blankProject,
   demoProject,
@@ -7,6 +8,25 @@ import {
   validateProject,
 } from "../shared/model.js";
 const RECOVERY = "hazzino-recovery-v1";
+export const WORKSPACE_DEFAULTS = {
+  leftPanel: true,
+  rightPanel: true,
+  toolbar: true,
+  sceneTabs: true,
+  compact: false,
+  panelWidth: 310,
+};
+let workspace = { ...WORKSPACE_DEFAULTS };
+try {
+  const saved = JSON.parse(
+    localStorage.getItem("hazzino-workspace-v1") || "{}",
+  );
+  for (const key of Object.keys(WORKSPACE_DEFAULTS)) {
+    if (typeof saved[key] === typeof WORKSPACE_DEFAULTS[key])
+      workspace[key] = saved[key];
+  }
+  workspace.panelWidth = Math.max(270, Math.min(420, workspace.panelWidth));
+} catch {}
 function writeRecovery(p) {
   const data = JSON.stringify(p);
   localStorage.setItem(RECOVERY, data);
@@ -50,6 +70,19 @@ export const useEditor = create((set, get) => ({
   xray: false,
   section: false,
   sectionHeight: 1500,
+  ...DISPLAY_DEFAULTS,
+  workspace,
+  activeViewId: null,
+  cameraView: "perspective",
+  projection: "perspective",
+  playingScenes: false,
+  contextMenu: null,
+  inspectorPanel: "properties",
+  curveSegments: 48,
+  arcSegments: 12,
+  polygonSides: 6,
+  arcClockwise: false,
+  paintMaterial: "oak",
   axis: null,
   selectionMode: "object",
   history: [],
@@ -180,6 +213,141 @@ export const useEditor = create((set, get) => ({
     return get().save();
   },
   set: (v) => set(v),
+  setWorkspace: (patch) => {
+    const workspace = { ...get().workspace, ...patch };
+    set({ workspace });
+    try {
+      localStorage.setItem("hazzino-workspace-v1", JSON.stringify(workspace));
+    } catch {}
+  },
+  showPanel: (panel) => {
+    get().setWorkspace({ rightPanel: true });
+    set({
+      inspectorPanel: panel,
+      tab: panel,
+      inspectorRequest: (get().inspectorRequest || 0) + 1,
+    });
+  },
+  selectAll: () => {
+    const p = get().project;
+    set({
+      selection: p.objects
+        .filter(
+          (o) =>
+            o.visible !== false &&
+            !o.locked &&
+            p.layers.find((l) => l.id === o.layer)?.visible !== false,
+        )
+        .map((o) => o.id),
+      face: null,
+    });
+  },
+  selectionProperty: (key, value) => {
+    if (!["visible", "locked"].includes(key) || !get().selection.length) return;
+    get().commit((value ? "Enable " : "Disable ") + key, (p) =>
+      p.objects
+        .filter(
+          (o) =>
+            get().selection.includes(o.id) && (key === "locked" || !o.locked),
+        )
+        .forEach((o) => {
+          o[key] = value;
+        }),
+    );
+    if (key === "visible" && !value) set({ selection: [], face: null });
+  },
+  unhideAll: () =>
+    get().commit("Show all objects and tags", (p) => {
+      p.objects
+        .filter((o) => !o.locked)
+        .forEach((o) => {
+          o.visible = true;
+        });
+      p.layers.forEach((l) => {
+        l.visible = true;
+      });
+    }),
+  applyMaterial: (id) => {
+    const s = get();
+    set({ paintMaterial: id });
+    if (!s.selection.length) return;
+    s.commit("Apply material", (p) =>
+      p.objects
+        .filter((o) => s.selection.includes(o.id) && !o.locked)
+        .forEach((o) => {
+          if (s.face && o.kind === "box")
+            o.faceMaterials = { ...o.faceMaterials, [s.face.index]: id };
+          else {
+            o.material = id;
+            o.faceMaterials = {};
+          }
+        }),
+    );
+  },
+  saveScene: (name) => get().engine?.saveView(name),
+  updateScene: (id) => {
+    const capture = get().engine?.captureView();
+    if (!capture) return;
+    get().commit("Update scene", (p) => {
+      const v = p.views.find((v) => v.id === id);
+      if (v) Object.assign(v, capture);
+    });
+    set({ activeViewId: id });
+  },
+  renameScene: (id, name) => {
+    if (!name.trim() || name.trim().length > 200) return;
+    get().commit("Rename scene", (p) => {
+      const v = p.views.find((v) => v.id === id);
+      if (v) v.name = name.trim();
+    });
+  },
+  removeScene: (id) => {
+    get().commit("Delete scene", (p) => {
+      p.views = p.views.filter((v) => v.id !== id);
+    });
+    if (get().activeViewId === id)
+      set({ activeViewId: null, playingScenes: false });
+  },
+  moveScene: (id, delta) =>
+    get().commit("Reorder scenes", (p) => {
+      const i = p.views.findIndex((v) => v.id === id),
+        next = i + delta;
+      if (i < 0 || next < 0 || next >= p.views.length) return;
+      const [v] = p.views.splice(i, 1);
+      p.views.splice(next, 0, v);
+    }),
+  activateScene: (id) => {
+    const s = get(),
+      v = s.project.views.find((v) => v.id === id);
+    if (!v) return;
+    s.engine?.restoreView(v);
+    const objects = new Map(v.visibility?.map((o) => [o.id, o.visible]) || []);
+    const layers = new Map(v.layers?.map((l) => [l.id, l.visible]) || []);
+    if (
+      s.project.objects.some(
+        (o) => objects.has(o.id) && objects.get(o.id) !== o.visible,
+      ) ||
+      s.project.layers.some(
+        (l) => layers.has(l.id) && layers.get(l.id) !== l.visible,
+      )
+    ) {
+      s.commit("Restore scene visibility", (p) => {
+        p.objects.forEach((o) => {
+          if (objects.has(o.id)) o.visible = objects.get(o.id);
+        });
+        p.layers.forEach((l) => {
+          if (layers.has(l.id)) l.visible = layers.get(l.id);
+        });
+      });
+    }
+    set({
+      ...(v.display || {}),
+      activeViewId: id,
+      status: "Scene · " + v.name,
+      selection: [],
+      face: null,
+    });
+  },
   notify: (status) => set({ status }),
   commit: (label, mutate) => {
     const s = get(),
@@ -356,6 +524,9 @@ export const useEditor = create((set, get) => ({
         face: null,
         history: [],
         future: [],
+        activeViewId: null,
+        playingScenes: false,
+        contextMenu: null,
         dirty: false,
         modal: null,
         status: "Opened " + project.name,

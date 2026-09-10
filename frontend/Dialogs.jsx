@@ -36,6 +36,8 @@ import { alignObjects, healthCheck } from "../shared/geometry.js";
 import { quotationHTML, planSVG } from "../shared/reports.js";
 import { shortcutGroups } from "./shortcuts.js";
 import { Hospital } from "./Hospital.jsx";
+import { WorkspaceSettings } from "./Workspace.jsx";
+import { editorMenus, flattenCommands } from "./commands.js";
 export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   return (
     <div
@@ -61,6 +63,7 @@ export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   );
 }
 export function Dialogs({ kind, close }) {
+  if (kind === "workspace-settings") return <WorkspaceSettings close={close} />;
   if (kind === "hospital") return <Hospital close={close} />;
   if (kind === "health") return <HealthDialog close={close} />;
   if (kind === "opening") return <OpeningDialog close={close} />;
@@ -1124,10 +1127,17 @@ function Commands({ close }) {
     [query, setQuery] = useState(""),
     [error, setError] = useState("");
   const actions = [
-    ...toolList.map(([id, I, name]) => ({
-      name: "Tool: " + name,
-      I,
-      run: () => s.set({ tool: id }),
+    ...flattenCommands(
+      editorMenus(s, {
+        importProject: () =>
+          document.querySelector("input[data-project-import]")?.click(),
+      }),
+    ).map((c) => ({
+      name: c.label,
+      path: c.path,
+      I: Search,
+      run: c.run,
+      disabled: c.disabled,
     })),
     ...libraryItems.map(([id, name, desc, I]) => ({
       name: "Create " + name,
@@ -1191,10 +1201,15 @@ function Commands({ close }) {
         {error && <p className="error">{error}</p>}
         <div className="command-results">
           {actions
-            .filter((a) => a.name.toLowerCase().includes(query.toLowerCase()))
+            .filter((a) =>
+              (a.name + " " + (a.path || ""))
+                .toLowerCase()
+                .includes(query.toLowerCase()),
+            )
             .map((a, i) => (
               <button
                 key={i}
+                disabled={a.disabled}
                 onClick={() => {
                   close();
                   a.run();
@@ -1202,6 +1217,7 @@ function Commands({ close }) {
               >
                 <a.I size={17} />
                 {a.name}
+                {a.path && <small className="command-path">{a.path}</small>}
                 <ArrowUpRight size={14} />
               </button>
             ))}

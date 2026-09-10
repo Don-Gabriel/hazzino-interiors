@@ -48,6 +48,11 @@ import {
   Armchair,
   Table2,
   Keyboard,
+  Circle,
+  PaintBucket,
+  Eraser,
+  Orbit,
+  Hand,
 } from "lucide-react";
 import { useEditor, download } from "./store.js";
 import { EditorEngine } from "./engine.js";
@@ -62,16 +67,30 @@ import {
 } from "../shared/model.js";
 import { Dialogs } from "./Dialogs.jsx";
 import { handleShortcut } from "./shortcuts.js";
+import { DrawingOptions, extraDrawingTools } from "./DrawingTools.jsx";
+import {
+  StudioMenuBar,
+  StudioToolbar,
+  SceneTabs,
+  InspectorTray,
+  ViewportContextMenu,
+} from "./Workspace.jsx";
 export const toolList = [
   ["select", MousePointer2, "Select", "V"],
   ["line", PenLine, "Line", "L"],
   ["rectangle", RectangleHorizontal, "Rectangle", "R"],
+  ["circle", Circle, "Circle", "C"],
+  ...extraDrawingTools,
   ["polygon", PenLine, "Closed profile", "P"],
   ["pushpull", ArrowUpFromLine, "Push / Pull", "E"],
   ["move", Move3D, "Move", "M"],
   ["rotate", Rotate3D, "Rotate", "Q"],
   ["scale", Scaling, "Resize", "S"],
   ["measure", Ruler, "Dimension", "D"],
+  ["paint", PaintBucket, "Paint bucket", "B"],
+  ["eraser", Eraser, "Erase object", ""],
+  ["orbit", Orbit, "Orbit", "O"],
+  ["pan", Hand, "Pan", "H"],
 ];
 export function IconButton({ icon: I, label, active, onClick, disabled }) {
   return (
@@ -86,7 +105,15 @@ export function IconButton({ icon: I, label, active, onClick, disabled }) {
     </button>
   );
 }
-export function Numeric({ label, value, onChange, step = 1, min, unit }) {
+export function Numeric({
+  label,
+  value,
+  onChange,
+  step = 1,
+  min,
+  unit,
+  disabled,
+}) {
   const [draft, setDraft] = useState(String(Math.round(value * 1000) / 1000));
   useEffect(() => setDraft(String(Math.round(value * 1000) / 1000)), [value]);
   function submit() {
@@ -104,6 +131,7 @@ export function Numeric({ label, value, onChange, step = 1, min, unit }) {
         value={draft}
         step={step}
         min={min}
+        disabled={disabled}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={submit}
         onKeyDown={(e) => {
@@ -188,28 +216,13 @@ export default function App() {
     return () => window.removeEventListener("keydown", key);
   }, []);
   const rows = bom(s.project);
-  const actions = [
-    ["New project", Plus, () => s.set({ modal: "new" })],
-    ["Open projects", FolderOpen, () => s.set({ modal: "projects" })],
-    ["Save project", Save, s.save],
-    [
-      "Duplicate project",
-      Copy,
-      () => {
-        const p = clone(s.project);
-        p.id = uid();
-        p.name += " copy";
-        s.load(p);
-        s.save();
-      },
-    ],
-    ["Import project JSON", FileJson, () => fileRef.current.click()],
-    ["Export & production", Download, () => s.set({ modal: "export" })],
-    ["Version checkpoints", History, () => s.set({ modal: "versions" })],
-    ["Model health checks", Scissors, () => s.set({ modal: "health" })],
-  ];
+
   return (
-    <div className="app-shell">
+    <div
+      className={
+        "app-shell studio-shell " + (s.workspace.compact ? "compact" : "")
+      }
+    >
       <header className="topbar">
         <div className="logo">
           <div className="logo-mark">
@@ -268,95 +281,11 @@ export default function App() {
         </button>
         <div className="avatar">DP</div>
       </header>
-      <nav className="menubar">
-        <div className="dropdown-wrap">
-          <button onClick={() => setFileMenu(!fileMenu)}>
-            File
-            <ChevronDown size={12} />
-          </button>
-          {fileMenu && (
-            <div className="dropdown">
-              {actions.map(([label, I, fn]) => (
-                <button
-                  key={label}
-                  onClick={() => {
-                    fn();
-                    setFileMenu(false);
-                  }}
-                >
-                  <I size={15} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="dropdown-wrap">
-          <button onClick={() => setEditMenu(!editMenu)}>
-            Edit <ChevronDown size={12} />
-          </button>
-          {editMenu && (
-            <div className="dropdown">
-              {[
-                ["Cut", "Ctrl X", s.cut],
-                ["Copy", "Ctrl C", s.copy],
-                ["Paste", "Ctrl V", () => s.paste()],
-                ["Paste in place", "Ctrl Shift V", () => s.paste(true)],
-                ["Undo", "Ctrl Z", s.undo],
-                ["Redo", "Ctrl Y", s.redo],
-              ].map(([name, key, action]) => (
-                <button
-                  key={name}
-                  onClick={() => {
-                    action();
-                    setEditMenu(false);
-                  }}
-                >
-                  {name}
-                  <small style={{ marginLeft: "auto", color: "#889b7a" }}>
-                    {key}
-                  </small>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button onClick={() => s.set({ modal: "projects" })}>Projects</button>
-        <button onClick={() => s.set({ modal: "export" })}>Export</button>
-        <button
-          className="ai-launch"
-          onClick={() => s.set({ modal: "hospital" })}
-        >
-          AI Hospital
-        </button>
-        <button onClick={() => s.set({ modal: "help" })}>Help</button>
-        <div className="toolbar-divider" />
-        <IconButton
-          icon={Undo2}
-          label="Undo (Ctrl Z)"
-          onClick={s.undo}
-          disabled={!s.history.length}
-        />
-        <IconButton
-          icon={Redo2}
-          label="Redo (Ctrl Y)"
-          onClick={s.redo}
-          disabled={!s.future.length}
-        />
-        <div className="top-spacer" />
-        <span className="workspace-label">LOCAL WORKSPACE</span>
-        <span className="database-badge">
-          <i
-            className={
-              "status-dot " + (s.dbStatus === "MongoDB" ? "online" : "")
-            }
-          />
-          {s.dbStatus === "MongoDB" ? "MongoDB connected" : s.dbStatus}
-        </span>
-        <button onClick={() => s.set({ modal: "settings" })}>
-          <Settings2 size={14} /> Preferences
-        </button>
-      </nav>
+      <StudioMenuBar importProject={() => fileRef.current?.click()} />
+      {s.workspace.toolbar && <StudioToolbar />}
+      <div hidden={!s.workspace.sceneTabs}>
+        <SceneTabs />
+      </div>
       <div className="editor-layout">
         <aside className="tool-rail">
           {toolList.map(([id, I, name, key], i) => (
@@ -364,7 +293,7 @@ export default function App() {
               {[1, 5, 8].includes(i) && <div className="rail-divider" />}
               <button
                 className={"tool-button " + (s.tool === id ? "active" : "")}
-                title={`${name} (${key})`}
+                title={key ? `${name} (${key})` : name}
                 aria-label={name}
                 onClick={() => s.set({ tool: id })}
               >
@@ -386,13 +315,16 @@ export default function App() {
             onClick={() => s.set({ modal: "help" })}
           />
         </aside>
-        <aside className="left-panel">
+        <aside
+          className="left-panel"
+          style={{ display: s.workspace.leftPanel ? undefined : "none" }}
+        >
           <div className="panel-tabs">
             <button
               className={s.leftTab === "model" ? "active" : ""}
               onClick={() => s.set({ leftTab: "model" })}
             >
-              <Layers size={15} /> Model
+              <Layers size={15} /> Outliner
             </button>
             <button
               className={s.leftTab === "library" ? "active" : ""}
@@ -466,7 +398,7 @@ export default function App() {
               </div>
               <div className="layers-panel">
                 <div className="section-heading">
-                  <h3>LAYERS</h3>
+                  <h3>TAGS</h3>
                   <button onClick={() => s.set({ modal: "layer" })}>
                     <Plus size={14} />
                   </button>
@@ -506,12 +438,15 @@ export default function App() {
           <div className="viewport-top">
             <div className="view-tabs">
               <button
-                className="active"
+                className={s.cameraView === "perspective" ? "active" : ""}
                 onClick={() => s.engine?.view("perspective")}
               >
                 <Box size={14} /> 3D studio
               </button>
-              <button onClick={() => s.engine?.view("top")}>
+              <button
+                className={s.cameraView === "top" ? "active" : ""}
+                onClick={() => s.engine?.view("top")}
+              >
                 <PanelTop size={14} /> Floor plan
               </button>
             </div>
@@ -556,7 +491,7 @@ export default function App() {
                       <button
                         key={v.id}
                         onClick={() => {
-                          s.engine?.restoreView(v);
+                          s.activateScene(v.id);
                           setViewMenu(false);
                         }}
                       >
@@ -578,6 +513,7 @@ export default function App() {
               />
             </div>
           </div>
+          <DrawingOptions />
           <div className="scene-caption">
             <span>DESIGN WORKSPACE</span>
             <h1>{s.project.name.split("·").at(-1).trim()}</h1>
@@ -661,62 +597,9 @@ export default function App() {
             </div>
           )}
         </main>
-        <aside className="right-panel">
-          <div className="panel-tabs">
-            <button
-              className={s.tab === "properties" ? "active" : ""}
-              onClick={() => s.set({ tab: "properties" })}
-            >
-              <SlidersHorizontal size={14} /> Properties
-            </button>
-            <button
-              className={s.tab === "materials" ? "active" : ""}
-              onClick={() => s.set({ tab: "materials" })}
-            >
-              Materials
-            </button>
-          </div>
-          <div className="right-scroll">
-            {s.tab === "materials" ? <MaterialsPanel /> : <Properties />}
-          </div>
-          <div className="project-summary">
-            <div className="section-heading">
-              <h3>PROJECT OVERVIEW</h3>
-              <button onClick={() => s.set({ modal: "bom" })}>
-                <ArrowUpRight size={15} />
-              </button>
-            </div>
-            <div>
-              <span>Components</span>
-              <strong>{rows.length}</strong>
-            </div>
-            <div>
-              <span>Board / finish area</span>
-              <strong>
-                {rows.reduce((a, r) => a + r.area, 0).toFixed(2)}{" "}
-                <small>m²</small>
-              </strong>
-            </div>
-            {s.project.roomInfo && (
-              <div>
-                <span>Initial room floor area</span>
-                <strong>
-                  {(
-                    (s.project.roomInfo.width * s.project.roomInfo.depth) /
-                    1e6
-                  ).toFixed(2)}{" "}
-                  <small>m²</small>
-                </strong>
-              </div>
-            )}
-            <button
-              className="text-action"
-              onClick={() => s.set({ modal: "bom" })}
-            >
-              View quantities & estimate <ArrowUpRight size={13} />
-            </button>
-          </div>
-        </aside>
+        {s.workspace.rightPanel && (
+          <InspectorTray properties={<Properties />} />
+        )}
       </div>
       <footer className="statusbar">
         <span className="status-tool">
@@ -741,6 +624,7 @@ export default function App() {
       </footer>
       <input
         hidden
+        data-project-import
         ref={fileRef}
         type="file"
         accept=".json"
@@ -755,6 +639,7 @@ export default function App() {
           e.target.value = "";
         }}
       />
+      <ViewportContextMenu />
       {s.modal && (
         <Dialogs kind={s.modal} close={() => s.set({ modal: null })} />
       )}
@@ -932,9 +817,20 @@ function Properties() {
         <HistoryPanel />
       </>
     );
+  const lineSpan =
+    o.kind === "line"
+      ? [0, 1, 2].map(
+          (i) =>
+            Math.max(...o.points.map((p) => p[i])) -
+            Math.min(...o.points.map((p) => p[i])),
+        )
+      : null;
   const changeVector = (key, i, n) => {
     const v = [...o[key]];
-    v[i] = n;
+    if (key === "size" && lineSpan) {
+      if (lineSpan[i] < 1e-7) return;
+      v[i] = n / lineSpan[i];
+    } else v[i] = n;
     s.update(o.id, { [key]: v }, "Edit " + key);
   };
   return (
@@ -973,6 +869,26 @@ function Properties() {
         />
       </div>
       <SelectionMode />
+      {o.kind === "line" && chosen.length === 1 && (
+        <p className="hint padded">
+          {o.points.length - 1} segments · Length{" "}
+          {(
+            o.points
+              .slice(1)
+              .reduce(
+                (total, point, i) =>
+                  total +
+                  Math.hypot(
+                    ...point.map(
+                      (v, axis) => (v - o.points[i][axis]) * o.size[axis],
+                    ),
+                  ),
+                0,
+              ) / factor
+          ).toFixed(2)}{" "}
+          {unit}
+        </p>
+      )}
       {s.face && (
         <p className="hint padded">
           Face {s.face.index + 1} selected · finish and Push/Pull apply here
@@ -1001,7 +917,9 @@ function Properties() {
           ].map(([key, title, labels]) => (
             <div className="panel-section" key={key}>
               <div className="section-heading">
-                <h3>{title}</h3>
+                <h3>
+                  {key === "position" && lineSpan ? "POSITION · ORIGIN" : title}
+                </h3>
                 <span>{key === "rotation" ? "°" : unit}</span>
               </div>
               <div
@@ -1011,7 +929,12 @@ function Properties() {
                   <Numeric
                     key={l}
                     label={l}
-                    value={o[key][i] / (key === "rotation" ? 1 : factor)}
+                    value={
+                      (o[key][i] *
+                        (key === "size" && lineSpan ? lineSpan[i] : 1)) /
+                      (key === "rotation" ? 1 : factor)
+                    }
+                    disabled={key === "size" && lineSpan && lineSpan[i] < 1e-7}
                     min={key === "size" ? 0.1 / factor : undefined}
                     onChange={(n) =>
                       changeVector(

@@ -1,3 +1,4 @@
+import { validateViews } from "./workspace.js";
 export const uid = () => globalThis.crypto.randomUUID();
 export const clone = (v) => structuredClone(v);
 export const MATERIALS = [
@@ -85,6 +86,10 @@ export const MATERIALS = [
     rate: 4200,
   },
 ];
+export function materialFor(project, id) {
+  const base = MATERIALS.find((m) => m.id === id) || MATERIALS[0];
+  return { ...base, ...(project.materialOverrides?.[base.id] || {}) };
+}
 export function entity(overrides = {}) {
   return {
     id: uid(),
@@ -206,7 +211,8 @@ export function validateProject(p) {
     if (
       ["line", "dimension"].includes(o.kind) &&
       (!Array.isArray(o.points) ||
-        o.points.length !== 2 ||
+        o.points.length < 2 ||
+        o.points.length > (o.kind === "dimension" ? 2 : 500) ||
         o.points.some(
           (v) =>
             !Array.isArray(v) ||
@@ -241,6 +247,34 @@ export function validateProject(p) {
     !Array.isArray(p.views)
   )
     throw Error("Missing project structure.");
+  validateViews(p.views);
+  if (p.materialOverrides != null) {
+    if (
+      typeof p.materialOverrides !== "object" ||
+      Array.isArray(p.materialOverrides)
+    )
+      throw Error("Invalid material overrides");
+    for (const [id, m] of Object.entries(p.materialOverrides)) {
+      if (
+        !MATERIALS.some((v) => v.id === id) ||
+        !m ||
+        typeof m !== "object" ||
+        Array.isArray(m)
+      )
+        throw Error("Invalid project material");
+      for (const [key, value] of Object.entries(m)) {
+        if (key === "color" && /^#[0-9a-f]{6}$/i.test(value)) continue;
+        if (
+          ["opacity", "roughness", "metalness"].includes(key) &&
+          Number.isFinite(value) &&
+          value >= 0 &&
+          value <= 1
+        )
+          continue;
+        throw Error("Invalid material property: " + key);
+      }
+    }
+  }
   const groupIds = new Set();
   for (const g of p.groups) {
     if (

@@ -1,3 +1,4 @@
+import { wardrobe, validateProject } from '../shared/model.js';
 import { Router } from "express";
 import { readFile } from "node:fs/promises";
 import { parseEnv } from "node:util";
@@ -37,7 +38,7 @@ export async function requestPlan({
   const schema = {
     type: "OBJECT",
     properties: {
-      name: { type: "STRING" },
+      action: {type:"STRING",enum:["hospital","wardrobe"]}, placement:{type:"STRING",enum:["back-right","back-left","front-right","front-left","center"]}, name: { type: "STRING" },
       width: { type: "NUMBER" },
       depth: { type: "NUMBER" },
       height: { type: "NUMBER" },
@@ -69,7 +70,7 @@ export async function requestPlan({
         systemInstruction: {
           parts: [
             {
-              text: "Translate the user request into an editable hospital patient room or ward plan. Dimensions in millimetres. Width/depth 3000..30000, height 2400..6000, beds 1..12 integer, central corridor 900..2400. Defaults 6000x5000x3000, 2 beds, cabinets and IV stands, corridor1200. Bed size1000x2100 placed in two columns around corridor with rows along depth. For comfortable fit allow width>=corridor+3300 and depth>=ceil(beds/2)*2400+600. Preserve explicit requested dimensions even if crowded, explain tradeoffs. Use current intent for what-if edits. Only these objects are supported; explain any omitted requested feature. These are configurable planning assumptions, never certify healthcare code compliance. Give a brief design rationale, not hidden reasoning.",
+              text: "For a wardrobe request return action wardrobe, width/depth/height as WARDROBE dimensions in mm (default1200/600/2100), placement back-right by default for right corner, back-left for left corner; beds2 cabinets true ivStands true corridor1200 are unused required fields. Otherwise action hospital. Translate the user request into an editable hospital patient room or ward plan. Dimensions in millimetres. Width/depth 3000..30000, height 2400..6000, beds 1..12 integer, central corridor 900..2400. Defaults 6000x5000x3000, 2 beds, cabinets and IV stands, corridor1200. Bed size1000x2100 placed in two columns around corridor with rows along depth. For comfortable fit allow width>=corridor+3300 and depth>=ceil(beds/2)*2400+600. Preserve explicit requested dimensions even if crowded, explain tradeoffs. Use current intent for what-if edits. Only these objects are supported; explain any omitted requested feature. These are configurable planning assumptions, never certify healthcare code compliance. Give a brief design rationale, not hidden reasoning.",
             },
           ],
         },
@@ -112,7 +113,7 @@ export async function requestPlan({
     );
   let plan;
   try {
-    plan = hospitalPlan(JSON.parse(text));
+    const raw=JSON.parse(text); if(raw.action==="wardrobe"){for(const k of ["width","depth","height"])if(!Number.isFinite(raw[k])||raw[k]<100||raw[k]>10000)throw Error("Invalid wardrobe dimensions");plan=raw;}else plan=hospitalPlan(raw);
   } catch {
     throw new Error(
       "Gemini returned an invalid plan. No design changes were applied. Try again with room dimensions and bed count.",
@@ -205,12 +206,11 @@ export function aiRouter(getDb, root) {
         prompt: prompt.trim(),
         current,
       });
-      const project = generateHospital(result.plan),
-        validation = validateHospital(project);
+      let project,validation; if(result.plan.action==="wardrobe"){project=validateProject(req.body.project);const room=project.roomInfo;if(!room)throw Error("Create a room envelope first so I can position the wardrobe.");const a=result.plan;if(a.width+40>room.width||a.depth+40>room.depth||a.height>room.height)throw Error("The requested wardrobe does not fit inside this room.");const place=a.placement||"back-right",x=place==="center"?0:(place.includes("left")?-1:1)*(room.width/2-a.width/2-20),y=place==="center"?0:(place.includes("front")?-1:1)*(room.depth/2-a.depth/2-20);const w=wardrobe({width:a.width,depth:a.depth,height:a.height,x,y});project.objects.push(...w.objects);project.groups.push(...w.groups);validateProject(project);validation={summary:"Wardrobe added with 20 mm wall clearance. Check surrounding furniture before use.",issues:[]};}else{project=generateHospital(result.plan);validation=validateHospital(project);}
       const usage = {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
-        operation: "hospital-design",
+        operation: result.plan.action === "wardrobe" ? "wardrobe-design" : "hospital-design",
         model: c.model,
         tier: c.tier,
         ...result.usage,

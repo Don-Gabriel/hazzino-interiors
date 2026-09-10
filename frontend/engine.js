@@ -4,7 +4,16 @@ import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import { OBJExporter } from "three/addons/exporters/OBJExporter.js";
 import { STLExporter } from "three/addons/exporters/STLExporter.js";
-import { entity, MATERIALS, clone } from "../shared/model.js";
+import { entity, MATERIALS, materialFor, clone } from "../shared/model.js";
+import { DISPLAY_DEFAULTS } from "../shared/workspace.js";
+import {
+  DRAWING_TOOLS,
+  ARC_TOOLS,
+  THREE_POINT_TOOLS,
+  drawingGeometry,
+  profileFromPoints,
+  simplifyStroke,
+} from "../shared/drawing.js";
 import {
   boxFeatures,
   extrudeObject,
@@ -99,8 +108,22 @@ export class EditorEngine {
     this.scene.add(this.marker);
     this.onDown = (e) => {
       this.down = [e.clientX, e.clientY];
+      if (e.button === 0 && useEditor.getState().tool === "freehand") {
+        this.cancelDraw();
+        const hit = this.workPoint(e, false);
+        if (hit) {
+          this.freehandActive = true;
+          this.points = [hit.point];
+          this.renderer.domElement.setPointerCapture(e.pointerId);
+        }
+      }
     };
     this.onUp = (e) => {
+      if (this.freehandActive && e.button === 0) {
+        this.sampleStroke(e);
+        this.finishStroke();
+        return;
+      }
       if (
         e.button !== 0 ||
         !this.down ||
@@ -112,9 +135,25 @@ export class EditorEngine {
       this.click(e);
     };
     this.onMove = (e) => this.pointer(e);
+    this.onCancel = () => this.cancelDraw();
+    this.onContext = (e) => {
+      e.preventDefault();
+      if (
+        this.down &&
+        Math.hypot(e.clientX - this.down[0], e.clientY - this.down[1]) > 5
+      )
+        return;
+      const s = useEditor.getState(),
+        hit = this.pick(e);
+      if (hit && !s.selection.includes(hit.object.userData.id))
+        s.select(hit.object.userData.id);
+      s.set({ contextMenu: { x: e.clientX, y: e.clientY } });
+    };
     this.renderer.domElement.addEventListener("pointerdown", this.onDown);
     this.renderer.domElement.addEventListener("pointerup", this.onUp);
     this.renderer.domElement.addEventListener("pointermove", this.onMove);
+    this.renderer.domElement.addEventListener("pointercancel", this.onCancel);
+    this.renderer.domElement.addEventListener("contextmenu", this.onContext);
     this.resize = new ResizeObserver(() => this.resizeView());
     this.resize.observe(container);
     this.unsubscribe = useEditor.subscribe((s, prev) => {
@@ -131,26 +170,23 @@ export class EditorEngine {
         s.project !== prev.project
       )
         this.syncSelection();
-      if (s.tool !== prev.tool) {
+      if (
+        s.tool !== prev.tool ||
+        s.plane !== prev.plane ||
+        s.project.id !== prev.project.id
+      ) {
         this.cancelDraw();
-        this.controls.enableRotate = ![
-          "rectangle",
-          "line",
-          "polygon",
-          "measure",
-        ].includes(s.tool);
-        this.renderer.domElement.style.cursor = [
-          "rectangle",
-          "line",
-          "polygon",
-          "measure",
-        ].includes(s.tool)
+        this.controls.enableRotate = !DRAWING_TOOLS.includes(s.tool);
+        this.controls.mouseButtons.LEFT =
+          s.tool === "pan" ? T.MOUSE.PAN : T.MOUSE.ROTATE;
+        this.renderer.domElement.style.cursor = DRAWING_TOOLS.includes(s.tool)
           ? "crosshair"
           : "default";
       }
       if (
         s.project !== prev.project ||
         [
+          ...Object.keys(DISPLAY_DEFAULTS),
           "gridVisible",
           "edges",
           "shadows",
@@ -222,10 +258,18 @@ export class EditorEngine {
       this.grid.add(line);
     }
     this.scene.add(this.grid);
+    this.grid.children.forEach((child, index) => {
+      child.visible =
+        index === 0
+          ? useEditor.getState().gridVisible
+          : useEditor.getState().axesVisible;
+    });
   }
   texture(mat) {
     if (!mat.grain) return null;
-    if (this.textures.has(mat.id)) return this.textures.get(mat.id);
+    const cached = this.textures.get(mat.id);
+    if (cached?.userData.color === mat.color) return cached;
+    cached?.dispose();
     const canvas = document.createElement("canvas");
     canvas.width = 128;
     canvas.height = 512;
@@ -244,21 +288,24 @@ export class EditorEngine {
     const tex = new T.CanvasTexture(canvas);
     tex.colorSpace = T.SRGBColorSpace;
     tex.wrapS = tex.wrapT = T.RepeatWrapping;
+    tex.userData.color = mat.color;
     this.textures.set(mat.id, tex);
     return tex;
   }
   material(id) {
-    const m = MATERIALS.find((v) => v.id === id) || MATERIALS[0];
+    const m = materialFor(useEditor.getState().project, id);
     const map = this.texture(m);
-    return new T.MeshStandardMaterial({
+    const mat = new T.MeshStandardMaterial({
       color: map ? "#ffffff" : m.color,
       map,
       roughness: m.roughness,
       metalness: m.metalness || 0,
-      transparent: !!m.opacity,
-      opacity: m.opacity || 1,
+      transparent: (m.opacity ?? 1) < 1,
+      opacity: m.opacity ?? 1,
       side: T.DoubleSide,
     });
+    mat.userData.materialId = m.id;
+    return mat;
   }
   mesh(o) {
     let mesh;
@@ -401,26 +448,65 @@ export class EditorEngine {
     this.settings(useEditor.getState());
   }
   settings(s) {
-    this.grid.visible = s.gridVisible;
+    this.grid.visible = s.gridVisible || s.axesVisible;
+    this.grid.children.forEach((child, index) => {
+      child.visible = index === 0 ? s.gridVisible : s.axesVisible;
+    });
+    this.scene.background.set(s.background);
+    this.scene.fog = s.fogEnabled
+      ? new T.Fog(s.background, s.fogNear, s.fogFar)
+      : null;
+    this.renderer.toneMappingExposure = s.exposure;
+    const azimuth = rad(s.sunAzimuth),
+      elevation = rad(s.sunElevation);
+    this.sun.position.set(
+      12000 * Math.cos(elevation) * Math.cos(azimuth),
+      12000 * Math.cos(elevation) * Math.sin(azimuth),
+      12000 * Math.sin(elevation),
+    );
+    this.sun.intensity = s.sunIntensity;
+    if (this.camera.isPerspectiveCamera && this.camera.fov !== s.fieldOfView) {
+      this.camera.fov = s.fieldOfView;
+      this.camera.updateProjectionMatrix();
+    }
     this.sun.castShadow = s.shadows;
     this.renderer.shadowMap.enabled = s.shadows;
     const clip = s.section
       ? [new T.Plane(new T.Vector3(0, 0, -1), s.sectionHeight)]
       : [];
     this.model.traverse((m) => {
-      if (m.userData.edge) m.visible = s.edges;
+      if (m.userData.edge) {
+        m.visible =
+          s.edges || ["wireframe", "hidden-line"].includes(s.displayStyle);
+        m.material.opacity =
+          s.displayStyle === "hidden-line" ? 0.85 : s.edgeOpacity;
+        m.material.depthTest = s.displayStyle !== "wireframe";
+        m.material.clippingPlanes = clip;
+      }
       if (m.isMesh) {
         const mats = Array.isArray(m.material) ? m.material : [m.material];
         mats.forEach((mat) => {
           mat.clippingPlanes = clip;
-          const material = MATERIALS.find(
-            (v) =>
-              v.id ===
-              s.project.objects.find((o) => o.id === m.userData.id)?.material,
+          const material = materialFor(s.project, mat.userData.materialId);
+          mat.map =
+            s.displayStyle === "textured" ? this.texture(material) : null;
+          mat.color.set(
+            ["monochrome", "hidden-line"].includes(s.displayStyle)
+              ? "#f4f2e9"
+              : mat.map
+                ? "#ffffff"
+                : material.color,
           );
-          mat.transparent = s.xray || !!material?.opacity;
-          mat.opacity = s.xray ? 0.3 : material?.opacity || 1;
+          mat.roughness = material.roughness;
+          mat.metalness = material.metalness || 0;
+          mat.emissive.set(
+            s.displayStyle === "hidden-line" ? "#ffffff" : "#000000",
+          );
+          mat.transparent = s.xray || (material.opacity ?? 1) < 1;
+          mat.opacity = s.xray ? 0.3 : (material.opacity ?? 1);
           mat.depthWrite = !s.xray;
+          mat.colorWrite = s.displayStyle !== "wireframe";
+          if (s.displayStyle === "wireframe") mat.depthWrite = false;
           mat.needsUpdate = true;
         });
       }
@@ -578,7 +664,7 @@ export class EditorEngine {
       false,
     )[0];
   }
-  workPoint(e) {
+  workPoint(e, allowSnap = true) {
     this.rayAt(e);
     const s = useEditor.getState();
     const normal =
@@ -595,7 +681,7 @@ export class EditorEngine {
     let type = "",
       anchor = null;
     let snapped = p.clone();
-    if (s.snapEnabled) {
+    if (s.snapEnabled && allowSnap) {
       const candidates = [];
       for (const [id, m] of this.objects) {
         if (!m.visible) continue;
@@ -632,7 +718,8 @@ export class EditorEngine {
       const rect = this.renderer.domElement.getBoundingClientRect();
       for (const c of candidates) {
         if (
-          ["rectangle", "polygon"].includes(s.tool) &&
+          DRAWING_TOOLS.includes(s.tool) &&
+          !["line", "measure"].includes(s.tool) &&
           Math.abs(c.p.dot(normal)) > 0.01
         )
           continue;
@@ -672,7 +759,7 @@ export class EditorEngine {
         type = "Grid";
       }
     }
-    if (s.axis && this.points.length) {
+    if (s.axis && this.points.length && allowSnap) {
       const a = "XYZ".indexOf(s.axis),
         last = this.points.at(-1);
       snapped = last.clone().setComponent(a, snapped.getComponent(a));
@@ -682,11 +769,15 @@ export class EditorEngine {
   }
   pointer(e) {
     const s = useEditor.getState();
-    if (!["rectangle", "line", "polygon", "measure"].includes(s.tool)) {
+    if (!DRAWING_TOOLS.includes(s.tool)) {
       this.marker.visible = false;
       return;
     }
-    const hit = this.workPoint(e);
+    if (this.freehandActive) {
+      this.sampleStroke(e);
+      return;
+    }
+    const hit = this.workPoint(e, s.tool !== "freehand");
     if (!hit) return;
     this.marker.visible = true;
     this.marker.position.copy(hit.point);
@@ -715,6 +806,20 @@ export class EditorEngine {
       d.setComponent(ax, a.getComponent(ax));
       pts = [a, c, b, d, a];
     }
+    try {
+      const geometry = drawingGeometry(
+        s.tool,
+        pts.map((v) => v.toArray()),
+        s.plane,
+        s,
+      );
+      if (geometry) {
+        pts = geometry.points.map(vec);
+        if (geometry.closed) pts.push(pts[0]);
+      }
+    } catch {
+      /* Keep the guide lines visible until the next point is valid. */
+    }
     const line = new T.Line(
       new T.BufferGeometry().setFromPoints(pts),
       new T.LineBasicMaterial({ color: 0x20836c, depthTest: false }),
@@ -723,7 +828,8 @@ export class EditorEngine {
   }
   click(e) {
     const s = useEditor.getState();
-    if (["rectangle", "line", "polygon", "measure"].includes(s.tool)) {
+    if (["orbit", "pan", "freehand"].includes(s.tool)) return;
+    if (DRAWING_TOOLS.includes(s.tool)) {
       const hit = this.workPoint(e);
       if (!hit) return;
       if (
@@ -746,12 +852,58 @@ export class EditorEngine {
         s.notify("Choose the second point · Esc cancels");
         return;
       }
+      if (THREE_POINT_TOOLS.includes(s.tool) && this.points.length < 3) {
+        s.notify(
+          s.tool === "arc-2point"
+            ? "Choose the arc bulge"
+            : s.tool === "rotated-rectangle"
+              ? "Choose the rectangle width"
+              : "Choose the final arc point",
+        );
+        return;
+      }
       const [a, b] = this.points;
       if (a.distanceTo(b) < 0.1) {
         this.cancelDraw();
         return;
       }
-      if (s.tool === "rectangle") {
+      if (
+        ["circle", "regular-polygon", ...THREE_POINT_TOOLS].includes(s.tool)
+      ) {
+        try {
+          const geometry = drawingGeometry(
+              s.tool,
+              this.points.map((p) => p.toArray()),
+              s.plane,
+              s,
+            ),
+            name = {
+              circle: "Circle",
+              "regular-polygon": "Polygon",
+              "rotated-rectangle": "Rotated rectangle",
+              arc: "Arc",
+              "arc-2point": "2 Point Arc",
+              "arc-3point": "3 Point Arc",
+              pie: "Pie",
+            }[s.tool];
+          const object = geometry.closed
+            ? profileFromPoints(name, geometry.points, s.plane)
+            : entity({
+                name,
+                kind: "line",
+                points: geometry.points,
+                position: [0, 0, 0],
+                size: [1, 1, 1],
+              });
+          s.add([object], "Draw " + name);
+          if (geometry.closed) s.set({ tool: "pushpull" });
+        } catch (error) {
+          this.points.pop();
+          this.anchors.pop();
+          s.notify(error.message + " · choose another point or Esc");
+          return;
+        }
+      } else if (s.tool === "rectangle") {
         const dims = [
           Math.abs(a.x - b.x),
           Math.abs(a.y - b.y),
@@ -799,6 +951,26 @@ export class EditorEngine {
     const hit = this.pick(e);
     if (hit) {
       const id = hit.object.userData.id;
+      if (s.tool === "eraser") {
+        s.select(id);
+        s.remove();
+        return;
+      }
+      if (s.tool === "paint") {
+        s.select(
+          id,
+          false,
+          s.selectionMode === "face" && hit.face
+            ? {
+                index: hit.face.materialIndex,
+                normal: hit.face.normal.toArray(),
+                point: hit.point.toArray(),
+              }
+            : null,
+        );
+        useEditor.getState().applyMaterial(s.paintMaterial);
+        return;
+      }
       const face = hit.face
         ? {
             index: hit.face.materialIndex,
@@ -846,46 +1018,72 @@ export class EditorEngine {
     } else if (!e.shiftKey) s.select(null);
   }
   finishPolygon() {
-    if (this.points.length < 3) return;
+    if (this.points.length < 3 || useEditor.getState().tool !== "polygon")
+      return;
     const s = useEditor.getState(),
       plane = s.plane;
-    const center = this.points
-      .reduce((a, b) => a.add(b), new T.Vector3())
-      .multiplyScalar(1 / this.points.length);
-    const indices = plane === "XY" ? [0, 1] : plane === "XZ" ? [0, 2] : [1, 2];
-    const profile = this.points.map((p) =>
-      indices.map((i) => p.getComponent(i) - center.getComponent(i)),
-    );
-    const xs = profile.map((p) => p[0]),
-      ys = profile.map((p) => p[1]);
-    s.add(
-      [
-        entity({
-          name: "Custom profile",
-          kind: "profile",
-          profile,
-          position: center.toArray(),
-          rotation:
-            plane === "XY"
-              ? [0, 0, 0]
-              : plane === "XZ"
-                ? [90, 0, 0]
-                : [90, 0, 90],
-          size: [
-            Math.max(...xs) - Math.min(...xs),
-            Math.max(...ys) - Math.min(...ys),
-            0.1,
-          ],
-          isFace: true,
-          thinAxis: 2,
-        }),
-      ],
-      "Close profile",
-    );
+    try {
+      s.add(
+        [
+          profileFromPoints(
+            "Custom profile",
+            this.points.map((p) => p.toArray()),
+            plane,
+          ),
+        ],
+        "Close profile",
+      );
+    } catch (error) {
+      s.notify(error.message);
+      return;
+    }
     this.cancelDraw();
     s.set({ tool: "pushpull" });
   }
+  sampleStroke(e) {
+    const hit = this.workPoint(e, false);
+    if (!hit) return;
+    if (!this.points.length || this.points.at(-1).distanceTo(hit.point) > 0.5) {
+      this.points.push(hit.point);
+      if (this.points.length > 2000)
+        this.points = this.points.filter(
+          (_, i, all) => i === 0 || i === all.length - 1 || i % 2 === 1,
+        );
+      useEditor.setState({
+        cursor: { point: hit.point.toArray(), type: "Drawing plane" },
+      });
+      this.drawPreview(hit.point);
+    }
+  }
+  finishStroke() {
+    const s = useEditor.getState();
+    let tolerance = 0.5,
+      points = this.points.map((p) => p.toArray()),
+      simplified = simplifyStroke(points, tolerance);
+    while (simplified.length > 500) {
+      tolerance *= 2;
+      simplified = simplifyStroke(points, tolerance);
+    }
+    if (
+      simplified.length >= 2 &&
+      simplified.some((p) => vec(p).distanceTo(vec(simplified[0])) > 0.1)
+    )
+      s.add(
+        [
+          entity({
+            name: "Freehand",
+            kind: "line",
+            points: simplified,
+            position: [0, 0, 0],
+            size: [1, 1, 1],
+          }),
+        ],
+        "Draw freehand curve",
+      );
+    this.cancelDraw();
+  }
   cancelDraw() {
+    this.freehandActive = false;
     this.points = [];
     this.anchors = [];
     this.disposeGroup(this.drawGroup);
@@ -1014,7 +1212,12 @@ export class EditorEngine {
     const old = this.camera;
     this.camera =
       name === "perspective"
-        ? new T.PerspectiveCamera(42, 1, 1, 200000)
+        ? new T.PerspectiveCamera(
+            useEditor.getState().fieldOfView,
+            1,
+            1,
+            200000,
+          )
         : new T.OrthographicCamera(-4000, 4000, 4000, -4000, 1, 200000);
     this.camera.up.set(0, 0, 1);
     if (name === "top") this.camera.up.set(0, 1, 0);
@@ -1026,6 +1229,13 @@ export class EditorEngine {
     this.transform.camera = this.camera;
     this.resizeView();
     this.controls.update();
+    useEditor.getState().set({
+      cameraView: name,
+      projection: this.camera.isOrthographicCamera
+        ? "orthographic"
+        : "perspective",
+      activeViewId: null,
+    });
     useEditor
       .getState()
       .notify(name[0].toUpperCase() + name.slice(1) + " view");
@@ -1039,53 +1249,85 @@ export class EditorEngine {
   }
   async export(type) {
     const group = new T.Group();
+    const exportMaterials = [];
     this.model.children
       .filter((m) => m.visible && m.isMesh)
       .forEach((m) => {
         const c = m.clone();
         c.children = [];
+        const actualMaterial = (mat) => {
+          const actual = this.material(mat.userData.materialId);
+          exportMaterials.push(actual);
+          return actual;
+        };
+        c.material = Array.isArray(m.material)
+          ? m.material.map(actualMaterial)
+          : actualMaterial(m.material);
         group.add(c);
       });
     group.updateMatrixWorld(true);
-    if (type === "glb") {
-      group.scale.setScalar(0.001);
-      group.rotation.x = -Math.PI / 2;
-      group.updateMatrixWorld(true);
-      const result = await new GLTFExporter().parseAsync(group, {
-        binary: true,
-      });
-      download(
-        result,
-        useEditor.getState().project.name + ".glb",
-        "model/gltf-binary",
-      );
-    } else if (type === "obj") {
-      download(
-        new OBJExporter().parse(group),
-        useEditor.getState().project.name + ".obj",
-        "text/plain",
-      );
-    } else
-      download(
-        new STLExporter().parse(group),
-        useEditor.getState().project.name + ".stl",
-        "model/stl",
-      );
-    useEditor.getState().notify(type.toUpperCase() + " exported");
+    try {
+      if (type === "glb") {
+        group.scale.setScalar(0.001);
+        group.rotation.x = -Math.PI / 2;
+        group.updateMatrixWorld(true);
+        const result = await new GLTFExporter().parseAsync(group, {
+          binary: true,
+        });
+        download(
+          result,
+          useEditor.getState().project.name + ".glb",
+          "model/gltf-binary",
+        );
+      } else if (type === "obj") {
+        download(
+          new OBJExporter().parse(group),
+          useEditor.getState().project.name + ".obj",
+          "text/plain",
+        );
+      } else
+        download(
+          new STLExporter().parse(group),
+          useEditor.getState().project.name + ".stl",
+          "model/stl",
+        );
+      useEditor.getState().notify(type.toUpperCase() + " exported");
+    } finally {
+      exportMaterials.forEach((mat) => mat.dispose());
+    }
   }
-  saveView() {
+  captureView() {
     const s = useEditor.getState();
+    return {
+      position: this.camera.position.toArray(),
+      target: this.controls.target.toArray(),
+      up: this.camera.up.toArray(),
+      orthographic: !!this.camera.isOrthographicCamera,
+      span: this.orthoSpan || 6000,
+      zoom: this.camera.zoom,
+      fov: s.fieldOfView,
+      display: Object.fromEntries(
+        Object.keys(DISPLAY_DEFAULTS).map((key) => [key, s[key]]),
+      ),
+      visibility: s.project.objects.map((o) => ({
+        id: o.id,
+        visible: o.visible !== false,
+      })),
+      layers: s.project.layers.map((l) => ({ id: l.id, visible: l.visible })),
+    };
+  }
+  saveView(name) {
+    const s = useEditor.getState();
+    const id = crypto.randomUUID(),
+      capture = this.captureView();
     s.commit("Save scene view", (p) =>
       p.views.push({
-        id: crypto.randomUUID(),
-        name: "View " + (p.views.length + 1),
-        position: this.camera.position.toArray(),
-        target: this.controls.target.toArray(),
-        up: this.camera.up.toArray(),
-        orthographic: this.camera.isOrthographicCamera,
-        span: this.orthoSpan,
+        id,
+        name: name?.trim() || "Scene " + (p.views.length + 1),
+        ...capture,
       }),
     );
+    s.set({ activeViewId: id });
   }
   restoreView(v) {
     this.view(v.orthographic ? "iso" : "perspective");
@@ -1093,8 +1335,14 @@ export class EditorEngine {
     if (v.up) this.camera.up.fromArray(v.up);
     this.controls.target.fromArray(v.target);
     if (v.span) this.orthoSpan = v.span;
+    this.camera.zoom = v.zoom || 1;
+    if (v.fov && this.camera.isPerspectiveCamera) this.camera.fov = v.fov;
     this.resizeView();
     this.controls.update();
+    useEditor.getState().set({
+      fieldOfView: v.fov || v.display?.fieldOfView || 42,
+      activeViewId: v.id,
+    });
   }
   disposeGroup(group) {
     group.traverse((o) => {

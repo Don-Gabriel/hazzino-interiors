@@ -53,6 +53,19 @@ test("text editing and modal keys never delete model geometry", () => {
   key("Escape");
   assert.equal(useEditor.getState().modal, null);
 });
+test("menu navigation never invokes modelling shortcuts", () => {
+  reset();
+  const s = useEditor.getState();
+  s.add([entity()]);
+  const before = structuredClone(
+    useEditor.getState().project.objects[0].position,
+  );
+  const target = { tagName: "BUTTON", closest: () => ({ role: "menu" }) };
+  assert.equal(key("ArrowRight", { target }), false);
+  assert.equal(key("Delete", { target }), false);
+  assert.deepEqual(useEditor.getState().project.objects[0].position, before);
+  assert.equal(useEditor.getState().project.objects.length, 1);
+});
 test("numpad and function-key routes invoke real camera commands", () => {
   reset();
   const calls = [];

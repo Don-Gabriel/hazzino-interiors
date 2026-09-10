@@ -135,6 +135,7 @@ try {
       instance: {
         dbPath: path.join(root, ".data/mongo"),
         storageEngine: "wiredTiger",
+        launchTimeout: 60000,
         args: ["--wiredTigerCacheSizeGB", "0.25"],
       },
       binary: { version: "8.2.6" },

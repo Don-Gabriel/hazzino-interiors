@@ -30,6 +30,8 @@ export const shortcutGroups = [
     name: "Modelling tools",
     items: [
       ["V / L / R / P", "Select / line / rectangle / closed profile"],
+      ["C / B / O / H", "Circle / paint bucket / orbit / pan"],
+      ["A", "2 Point Arc: start, end, then bulge"],
       ["E / M / Q / S / D", "Push-pull / move / rotate / resize / dimension"],
       ["X / Y / Z", "Toggle axis constraint"],
       ["Enter", "Finish closed profile"],
@@ -74,6 +76,11 @@ export const shortcutGroups = [
   },
 ];
 export function handleShortcut(e, options = {}) {
+  if (
+    e.defaultPrevented ||
+    e.target?.closest?.('[role="menu"], [role="menubar"]')
+  )
+    return false;
   const s = useEditor.getState(),
     tag = e.target?.tagName || "",
     editing =
@@ -193,6 +200,11 @@ export function handleShortcut(e, options = {}) {
         v: "select",
         l: "line",
         r: "rectangle",
+        c: "circle",
+        a: "arc-2point",
+        b: "paint",
+        o: "orbit",
+        h: "pan",
         p: "polygon",
         e: "pushpull",
         m: "move",

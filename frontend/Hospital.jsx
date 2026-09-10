@@ -31,7 +31,7 @@ export function Hospital({ close }) {
       const r = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, current: s.project.hospitalIntent }),
+        body: JSON.stringify({ prompt, current: s.project.hospitalIntent, project:s.project }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -57,8 +57,8 @@ export function Hospital({ close }) {
   }
   return (
     <Dialog
-      title="AI Hospital Studio"
-      subtitle="Describe a patient room or ward. Generate, review, then edit in 3D."
+      title="AI Design Studio"
+      subtitle="Describe a room or wardrobe, including dimensions and placement."
       onClose={() => !busy && close()}
       wide
     >
@@ -69,7 +69,7 @@ export function Hospital({ close }) {
             : "Checking Gemini connection…"}
         </p>
         <label>
-          Describe your design
+          Describe your design — e.g. Create a wardrobe 1200 mm wide, 600 mm deep, 2100 mm high in the right corner
           <textarea
             aria-label="Hospital design command"
             value={prompt}

@@ -1,0 +1,83 @@
+{
+  "inspectedOn": "2026-09-10",
+  "application": "SketchUp 2026 for Windows",
+  "scope": "Observed drawing submenus, toolbar names and options, and material editor controls. This is not a complete behavior audit.",
+  "submenus": {
+    "Draw > Arcs": [
+      "Arc",
+      "2 Point Arc",
+      "3 Point Arc",
+      "Pie"
+    ],
+    "Draw > Shapes": [
+      "Rectangle",
+      "Rotated Rectangle",
+      "Circle",
+      "Polygon"
+    ],
+    "Draw > Lines": [
+      "Line",
+      "Freehand"
+    ],
+    "Draw > Sandbox": [
+      "From Contours",
+      "From Scratch"
+    ]
+  },
+  "toolbars": [
+    "Add Location",
+    "AI Assistant",
+    "AI Render",
+    "AI Tools",
+    "Analysis Hub",
+    "Camera",
+    "Classifier",
+    "Construction",
+    "Drawing",
+    "Dynamic Components",
+    "Edit",
+    "Getting Started",
+    "Large Tool Set",
+    "Measurements",
+    "Principal",
+    "Sandbox",
+    "Section",
+    "Shadows",
+    "Solid Tools",
+    "Standard",
+    "Styles",
+    "Tags",
+    "Trimble Connect",
+    "Trimble Scan Essentials",
+    "Views",
+    "Warehouse"
+  ],
+  "toolbarOptions": [
+    "Show Screen Tips on toolbars",
+    "Large Icons"
+  ],
+  "materialEditor": {
+    "state": "Default material selected; editable controls disabled",
+    "tabs": [
+      "Select",
+      "Edit"
+    ],
+    "controls": [
+      "Color",
+      "Use texture image",
+      "Texture dimensions",
+      "Colorize",
+      "Reset Color",
+      "Opacity",
+      "Metalness",
+      "Add Metalness Map",
+      "Roughness",
+      "Invert",
+      "Add Roughness Map",
+      "Normal",
+      "Add Normal Map",
+      "Ambient Occlusion",
+      "Add Ambient Occlusion Map"
+    ]
+  }
+}
