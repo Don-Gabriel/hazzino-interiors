@@ -25,6 +25,42 @@ const volume = (o) => {
     solid.delete();
   }
 };
+
+test("project import rejects malformed machining records before they reach production reports", () => {
+  const part = entity({ size: [600, 400, 18] });
+  const record = {
+    type: "drill",
+    axis: 2,
+    side: 1,
+    u: 37,
+    v: 64,
+    diameter: 5,
+    holes: 8,
+    depth: 12,
+    through: false,
+  };
+  const project = (machining) => ({
+    ...blankProject(),
+    objects: [{ ...part, machining }],
+  });
+  validateProject(project([record]));
+  validateProject(project([]));
+  for (const malformed of [
+    "drill",
+    {},
+    [null],
+    [{ ...record, holes: 0 }],
+    [{ ...record, diameter: NaN }],
+    [{ ...record, axis: 3 }],
+    [{ ...record, depth: -1 }],
+    [{ ...record, type: "pocket", width: 10, height: -1 }],
+  ]) {
+    assert.throws(
+      () => validateProject(project(malformed)),
+      /machining record/,
+    );
+  }
+});
 test("rotated panels accept blind 32 mm drill patterns on either face without changing their blank", async () => {
   const part = entity({
     size: [600, 18, 2000],

@@ -173,6 +173,41 @@ export function validateProject(p) {
     if (o.size.some((n) => n <= 0))
       throw Error("Dimensions must be greater than zero.");
     if (o.kind === "mesh") validateMesh(o);
+    if (o.machining != null) {
+      const finite = (n) =>
+        typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= 1e8;
+      if (
+        !Array.isArray(o.machining) ||
+        o.machining.length > 1000 ||
+        o.machining.some(
+          (m) =>
+            !m ||
+            !["drill", "pocket"].includes(m.type) ||
+            !Number.isInteger(m.axis) ||
+            m.axis < 0 ||
+            m.axis > 2 ||
+            ![-1, 1].includes(m.side) ||
+            !finite(m.u) ||
+            m.u < 0 ||
+            !finite(m.v) ||
+            m.v < 0 ||
+            typeof m.through !== "boolean" ||
+            (!m.through && (!finite(m.depth) || m.depth <= 0)) ||
+            (m.type === "drill" &&
+              (!finite(m.diameter) ||
+                m.diameter <= 0 ||
+                !Number.isInteger(m.holes) ||
+                m.holes < 1 ||
+                m.holes > 100)) ||
+            (m.type === "pocket" &&
+              (!finite(m.width) ||
+                m.width <= 0 ||
+                !finite(m.height) ||
+                m.height <= 0)),
+        )
+      )
+        throw Error("Invalid panel machining record");
+    }
     if (o.fabrication) {
       const f = o.fabrication;
       if (
