@@ -3,7 +3,7 @@ export const DEMO_LIMITS = {
   requestsPerDay: 20,
   requestsPerMinute: 2,
   tokensPerDay: 60000,
-  outputTokens: 1800,
+  outputTokens: 3072,
   promptCharacters: 2000,
   reservationTokens: 6000,
 };
@@ -213,13 +213,26 @@ export async function generateFurniturePlan(
                 },
               ],
             },
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text:
+                      prompt +
+                      "\nReturn a compact specification: explanation at most 40 words, only requested compartments, no repeated entries.",
+                  },
+                ],
+              },
+            ],
             generationConfig: {
               responseMimeType: "application/json",
               responseSchema: schema,
               temperature: 0.1,
               maxOutputTokens: DEMO_LIMITS.outputTokens,
-              thinkingConfig: c.model.startsWith("gemini-3") ? { thinkingLevel: "minimal" } : { thinkingBudget: 0 },
+              thinkingConfig: c.model.startsWith("gemini-3")
+                ? { thinkingLevel: "minimal" }
+                : { thinkingBudget: 0 },
             },
           }),
         },
@@ -242,8 +255,20 @@ export async function generateFurniturePlan(
         index < c.keys.length - 1
       )
         continue;
+      let detail = "";
+      try {
+        const failure = await response.json();
+        detail =
+          typeof failure.error?.message === "string"
+            ? failure.error.message
+            : "";
+        for (const secret of c.keys)
+          detail = detail.split(secret).join("[redacted]");
+      } catch {}
       throw Error(
-        "Gemini returned HTTP " + response.status + ". Check key verification.",
+        "Gemini returned HTTP " +
+          response.status +
+          (detail ? ": " + detail.slice(0, 800) : ". Check key verification."),
       );
     }
     const data = await response.json();

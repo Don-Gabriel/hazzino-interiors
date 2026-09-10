@@ -118,3 +118,8 @@ All times are India Standard Time on 9 September 2026. This file records the bui
 ## 79. Final five-key verification and Downloads handoff
 
 All five supplied keys passed metadata verification locally and through Cloudflare. The owner explicitly confirmed Free tier. Keys were published via secret bulk without exposing values. A cloud generation attempt on 2.5 and another on 3.5 Flash-Lite each returned HTTP 404. Switched the configured model to 3.5 Flash-Lite with minimal thinking; seven targeted regressions and the build passed. Local real generation succeeded at 283 input + 75 output tokens; its exact 1800 x 600 x 2400 mm wardrobe specification built 93 valid parts. The jury guide prominently records the unresolved cloud-only generation error and directs AI demonstration to the local app. Guide copied to the user's Downloads directory.
+
+
+## Cloud AI release verification — 10 September 2026, 3:53 pm IST
+
+Supersedes the earlier cloud HTTP 404 status: deployed version 5d5cb502-05d8-4b4b-aac2-a2562b0203f9 successfully generated a wardrobe and inserted 62 editable objects in the browser. Latest request: 306 input + 183 output = 489 tokens. Cloud ledger: 7 attempts, 6,823 actual reported tokens, 42,000 reserved of 60,000. Response cap is now 3,072. Nine targeted tests and six cloud integration tests passed. Complex prompts can still produce incomplete responses or dimensions rejected on insertion; these limitations are documented in the jury guide.

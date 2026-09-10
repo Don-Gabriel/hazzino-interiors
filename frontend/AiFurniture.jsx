@@ -137,7 +137,7 @@ export function AiFurniture({ close }) {
         </button>
         <p className="hint">
           Demo caps: 2 attempts/minute, 20/day, 60,000 reserved tokens/day,
-          1,800 output tokens/request. Five keys share these caps. Free tier
+          3,072 output tokens/request. Five keys share these caps. Free tier
           must be confirmed in Google AI Studio; the app cannot verify billing.
         </p>
         {error && <p role="status">{error}</p>}

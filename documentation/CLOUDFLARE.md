@@ -95,3 +95,8 @@ Following [Cloudflare's agent setup instructions](https://developers.cloudflare.
 No OAuth credentials, claim links or local secrets are committed to this repository.
 
 Official references: [Static Assets](https://developers.cloudflare.com/workers/static-assets/), [SQLite storage](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/), [Wrangler deployment](https://developers.cloudflare.com/workers/wrangler/commands/#deploy).
+
+
+## Cloud AI release verification — 10 September 2026, 3:53 pm IST
+
+Supersedes the earlier cloud HTTP 404 status: deployed version 5d5cb502-05d8-4b4b-aac2-a2562b0203f9 successfully generated a wardrobe and inserted 62 editable objects in the browser. Latest request: 306 input + 183 output = 489 tokens. Cloud ledger: 7 attempts, 6,823 actual reported tokens, 42,000 reserved of 60,000. Response cap is now 3,072. Nine targeted tests and six cloud integration tests passed. Complex prompts can still produce incomplete responses or dimensions rejected on insertion; these limitations are documented in the jury guide.

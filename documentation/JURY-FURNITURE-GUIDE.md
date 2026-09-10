@@ -6,7 +6,33 @@ Build date: 10 September 2026. This guide describes the furniture demonstration 
 
 **Source:** https://github.com/Don-Gabriel/hazzino-interiors
 
-**Final AI verification update (10 September, 3:44 pm IST):** all five supplied keys passed real model-access checks locally and from the deployed Worker. The owner confirmed Free tier, and the keys are installed as Worker secrets. Gemini 3.5 Flash-Lite generated an exact 1800 × 600 × 2400 mm wardrobe specification locally (283 input + 75 output = 358 tokens); that specification produced a validated 93-part assembly. Use the **local app at http://127.0.0.1:5173/** for the AI demonstration. Cloudflare text generation still returns HTTP 404 despite successful key verification. It is an unresolved deployment-specific AI failure; cloud manual/preset modelling and storage remain available. Do not claim cloud AI generation is verified.
+**Cloud AI verification update (10 September, 3:53 pm IST):** AI generation on the public Cloudflare app is now verified. The prompt `Build a wardrobe 1800 mm wide, 600 mm deep and 2400 mm high.` returned a specification that was inserted as **62 editable objects** in the project **AI furniture · Jury verification**. Save was invoked. All five supplied keys passed model-access verification and are installed as Worker secrets; the owner confirmed all five projects are Free tier. A more complex generated design failed insertion with “Dimensions must be greater than zero”, and some longer responses were rejected as incomplete. Use the tested prompt for the demo; arbitrary instructions are not guaranteed to generate usable furniture. The earlier cloud HTTP 404 failure is no longer reproduced by the verified request.
+
+### API tokens, fallback and demo limits
+
+Usage snapshot: **10 September 2026, 3:52:51 pm IST**, shared Cloudflare ledger.
+
+| Measure | Recorded value |
+|---|---|
+| Model | Gemini 3.5 Flash-Lite |
+| Latest successful wardrobe input | 306 tokens |
+| Latest successful wardrobe output | 183 tokens |
+| Latest successful wardrobe total | 489 tokens |
+| Actual tokens reported across cloud attempts | 6,823 tokens |
+| Cloud attempts recorded | 7 |
+| Conservative tokens reserved | 42,000 of 60,000 daily |
+| Reservation per attempt | 6,000 tokens, including failed attempts |
+| Remaining reservation allowance at snapshot | 18,000 tokens, equivalent to 3 attempts |
+| Request caps | 2 per minute; nominally 20 per day, but the token reservation permits at most 10 attempts per day |
+| Maximum response / prompt | 3,072 output tokens / 2,000 prompt characters |
+| Credential slots | 5 server-side keys; latest success used slot 1 |
+
+Actual usage and reserved budget are different figures. Reservations protect the demo allowance and are not a billing estimate. Earlier local generation used 283 input + 75 output = 358 tokens in a separate local ledger, excluded from the cloud total. Failed provider requests may not report token usage. The displayed actual total includes only provider-reported usage.
+
+Keys provide fallback when the provider rejects or exhausts an eligible key; they do not multiply the application's shared daily budget. Key verification checks model access, not billing status, available project quota or a guarantee that generation will succeed. Free-tier status was confirmed by the owner; the API reports billingVerified=false because it cannot independently verify billing. No paid-tier switch is enabled by this build. Provider quotas still apply. The model's 1,048,576-token input context and 65,536-token output capability are context limits, **not** free usage allowances.
+
+Validation for this release: 9 targeted tests and 6 Cloudflare integration tests passed; the earlier broader suite passed 112 tests. Browser verification confirms generation and insertion of the 62-part wardrobe. Remaining complex-generation failures are disclosed above.
+
 
 ## 1. What the app does
 
@@ -193,7 +219,7 @@ After verification, `node scripts/configure-gemini.mjs --publish` uploads only G
 
 ### Demo limits and fallback
 
-The new furniture AI has one shared budget across all five keys: two upstream attempts/minute, a nominal twenty attempts/day, 60,000 reserved tokens/day, 2,000 prompt characters and 1,800 maximum output tokens. Each attempt reserves 6,000 tokens, including failed attempts; therefore the token reserve currently limits use to **ten attempts/day**. The earlier limit wins. UTC day boundaries reset the daily ledger. Local usage is stored in `.data/gemini-demo-usage.json`; the deployed app uses a single global Durable Object budget shared across browsers.
+The new furniture AI has one shared budget across all five keys: two upstream attempts/minute, a nominal twenty attempts/day, 60,000 reserved tokens/day, 2,000 prompt characters and 3,072 maximum output tokens. Each attempt reserves 6,000 tokens, including failed attempts; therefore the token reserve currently limits use to **ten attempts/day**. The earlier limit wins. UTC day boundaries reset the daily ledger. Local usage is stored in `.data/gemini-demo-usage.json`; the deployed app uses a single global Durable Object budget shared across browsers.
 
 Actual returned input/output/total token counts and the successful slot are recorded. Attempts can fall back for invalid/unavailable keys or transient service responses, within the same caps. Google 429 quota errors stop the request; keys are not rotated to bypass project quota. Network timeouts stop to avoid duplicate retries. No paid-model fallback, search grounding, image generation or agent loop is used.
 
