@@ -789,8 +789,18 @@ main:has(> .drawing-tool-options) .scene-caption {
   }
 }
 @media (max-width: 950px) {
+  .studio-shell .editor-layout {
+    position: relative;
+  }
   .studio-shell .left-panel {
-    display: none !important;
+    display: flex;
+    position: absolute;
+    left: 76px;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    width: 230px;
+    box-shadow: 8px 0 24px #18371c20;
   }
   .studio-shell .topbar .outline-dark,
   .studio-shell .avatar {

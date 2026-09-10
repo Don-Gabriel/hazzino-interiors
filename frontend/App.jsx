@@ -348,6 +348,11 @@ export default function App() {
             >
               <Library size={15} /> Library
             </button>
+            <IconButton
+              icon={X}
+              label="Hide Outliner"
+              onClick={() => s.setWorkspace({ leftPanel: false })}
+            />
           </div>
           {s.leftTab === "model" ? (
             <>

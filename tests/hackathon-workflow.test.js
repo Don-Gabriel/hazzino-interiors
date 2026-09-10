@@ -211,7 +211,12 @@ test("screen inference prefers an endpoint near a corner and identifies true 3D 
   mouse.clientX += 4;
   const hit = e.workPoint(mouse);
   assert.equal(hit.type, "Endpoint");
-  assert.ok(Math.abs(hit.point.x-600)<1e-6 && Math.abs(hit.point.z-2100)<1e-6 && Math.abs(Math.abs(hit.point.y)-9)<1e-6, 'nearby thin-board corners must remain exact vertices');
+  assert.ok(
+    Math.abs(hit.point.x - 600) < 1e-6 &&
+      Math.abs(hit.point.z - 2100) < 1e-6 &&
+      Math.abs(Math.abs(hit.point.y) - 9) < 1e-6,
+    "nearby thin-board corners must remain exact vertices",
+  );
   const lines = blankProject();
   lines.objects = [
     entity({
