@@ -1,5 +1,12 @@
 # Cloudflare deployment
 
+## Rectangle preview fix — 10 September 2026
+
+- Source: [`b275b55`](https://github.com/Don-Gabriel/hazzino-interiors/commit/b275b55).
+- Current version: `807a79c3-da9d-4bbb-bbc7-46ff75cf4d69`.
+- Rectangle previews now receive the two original diagonal control points, avoiding a second expansion that collapsed the outline into a line. A regression test failed before the fix and passes across all three planes and four drag directions afterward. All 13 targeted drawing/manual-workflow tests and the build passed.
+- Browser verification showed four preview edges while the design still had zero objects, then exactly one face after the second click. The public app returned HTTP 200 and the verified corrected asset `index-DC8gX3pP.js` after deployment.
+
 ## Manual workflow correction — 10 September 2026
 
 - Live source: [`f2a8b19`](https://github.com/Don-Gabriel/hazzino-interiors/commit/f2a8b19), including `9e49ad6` for snapping and the documented manual workflow.
