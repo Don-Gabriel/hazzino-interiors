@@ -1,5 +1,11 @@
 import { DurableObject } from "cloudflare:workers";
 import { validateProject, MATERIALS } from "../shared/model.js";
+import {
+  geminiStatus,
+  verifyGeminiKeys,
+  generateFurniturePlan,
+  reserveDemo,
+} from "../shared/gemini-furniture.js";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const json = (body, status = 200) =>
@@ -55,6 +61,11 @@ export default {
       return json({ error: "Cross-origin API access is not allowed" }, 403);
     if (url.pathname === "/api/materials" && request.method === "GET")
       return json(MATERIALS);
+    // One global budget shared by every browser and every key, persisted in SQLite.
+    if (url.pathname.startsWith("/api/furniture-ai/"))
+      return env.WORKSPACES.get(
+        env.WORKSPACES.idFromName("global-furniture-ai-budget"),
+      ).fetch(request);
 
     const cookieName =
       url.protocol === "https:"
@@ -158,6 +169,43 @@ export class WorkspaceStore extends DurableObject {
     try {
       const url = new URL(request.url),
         method = request.method;
+      if (url.pathname.startsWith("/api/furniture-ai/")) {
+        if (url.pathname.endsWith("/status") && method === "GET")
+          return json(
+            geminiStatus(
+              this.env,
+              (await this.ctx.storage.get("geminiUsage")) || {},
+            ),
+          );
+        if (method !== "POST")
+          return json({ error: "Method not allowed" }, 405);
+        if (this.aiBusy)
+          return json({ error: "AI request already running" }, 429);
+        this.aiBusy = true;
+        try {
+          if (url.pathname.endsWith("/verify"))
+            return json(await verifyGeminiKeys(this.env));
+          if (!url.pathname.endsWith("/generate"))
+            return json({ error: "Unknown AI route" }, 404);
+          const body = await readJson(request);
+          let ledger = (await this.ctx.storage.get("geminiUsage")) || {};
+          const result = await generateFurniturePlan(this.env, body.prompt, {
+            reserve: async () => {
+              ledger = reserveDemo(ledger);
+              await this.ctx.storage.put("geminiUsage", ledger);
+            },
+            record: async (usage) => {
+              ledger.actualTokens =
+                (ledger.actualTokens || 0) + usage.totalTokens;
+              ledger.last = usage;
+              await this.ctx.storage.put("geminiUsage", ledger);
+            },
+          });
+          return json(result);
+        } finally {
+          this.aiBusy = false;
+        }
+      }
       if (url.pathname === "/api/health" && method === "GET")
         return json({
           ok: true,

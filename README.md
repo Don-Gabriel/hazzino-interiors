@@ -1,5 +1,7 @@
 # Hazzino Studio
 
+**Jury walkthrough and complete furniture build guide: [JURY-FURNITURE-GUIDE.md](documentation/JURY-FURNITURE-GUIDE.md)** — setup, exact manual cabinet dimensions, tool instructions, materials, clearances, production, Gemini configuration, verification evidence and scope limits.
+
 A browser furniture design studio for modular kitchens, wardrobes, study/work tables, TV units, lofts, shoe racks, bookcases and custom cabinets. Furniture is made of individually editable geometry, with live configuration previews, moving doors and drawers, panel machining and production reports.
 
 Start with **Build furniture** in the header, or the **Furniture** menu. See [the furniture guide](documentation/FURNITURE-STUDIO.md) for construction options, modelling, imports and production workflows. The interface follows the supplied SketchUp reference in Hazzino's green and cream style; full SketchUp parity is not claimed.

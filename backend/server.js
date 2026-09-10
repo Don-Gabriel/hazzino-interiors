@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateProject, MATERIALS } from "../shared/model.js";
 import { aiRouter } from "./ai.js";
+import { furnitureAiRouter } from "./furniture-ai.js";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -16,6 +17,7 @@ app.use((req, res, next) => {
   next();
 });
 let db, client, mongo, dbError;
+app.use("/api/furniture-ai", furnitureAiRouter(root));
 app.use(
   "/api/ai",
   aiRouter(() => db, root),

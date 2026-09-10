@@ -1,5 +1,16 @@
 # Cloudflare deployment
 
+## Current release — modelling corrections and furniture AI, 10 September 2026
+
+- Current version: `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`; published before the 3:40 pm IST cutoff.
+- Asset: `index-DC9IQ_TS.js`. All 112 ordinary tests and the production build passed.
+- All six integration tests passed against the public release: assets/deep links, save/reopen/checkpoints, browser isolation, invalid writes, large Unicode models and textured furniture round trips. The deployed furniture AI status endpoint returns the expected unconfigured state with zero cloud keys.
+- Corrected material navigation/tinting, new custom-colour workflow, broad-face rectangular Follow Me profiles, elevated drawing snaps and feature edges for shaped meshes. New dimensioned solids start beside existing furniture. Boolean source replacement and nested-group Undo have regression coverage.
+- Added `/api/furniture-ai/status`, `/verify` and `/generate`, with a persistent global demo budget. Deployed status is deliberately unconfigured until keys are verified and uploaded as Worker secrets. Local keys are not bundled or automatically published.
+- [Jury guide](JURY-FURNITURE-GUIDE.md) includes exact procedures and distinguishes implemented/tested features from unverified live Gemini generation.
+
+Older entries below record historical releases; their version IDs are not the current version.
+
 ## Rectangle preview fix — 10 September 2026
 
 - Source: [`b275b55`](https://github.com/Don-Gabriel/hazzino-interiors/commit/b275b55).

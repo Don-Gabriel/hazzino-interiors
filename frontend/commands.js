@@ -81,6 +81,7 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
   ];
   return [
     submenu("furniture", "Furniture", [
+      modal("ai-furniture", "AI · Build from instructions…", "ai-furniture"),
       ...FURNITURE_TYPES.map(([id, label]) =>
         modal(
           "build-" + id,

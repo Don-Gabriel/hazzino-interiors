@@ -444,7 +444,7 @@ export function MaterialEditor() {
   const id = s.paintMaterial,
     m = materialFor(s.project, id);
   useEffect(() => {
-    if (selected)
+    if (selected && s.tool !== "paint")
       s.set({
         paintMaterial:
           (s.face ? selected.faceMaterials?.[s.face.index] : null) ||
@@ -453,7 +453,7 @@ export function MaterialEditor() {
   }, [
     selected?.id,
     selected?.material,
-    selected?.faceMaterials,
+    selected?.faceMaterials?.[s.face?.index],
     s.face?.index,
   ]);
   const change = (key, value) =>
@@ -520,6 +520,49 @@ export function MaterialEditor() {
         />
         <span>{m.color.toUpperCase()}</span>
       </label>
+      <label className="field-label">
+        Hex colour
+        <input
+          key={id + m.color}
+          aria-label="Material hex colour"
+          defaultValue={m.color}
+          onBlur={(e) => {
+            const value = e.target.value.trim();
+            if (/^#[0-9a-f]{6}$/i.test(value)) change("color", value);
+            else {
+              e.target.value = m.color;
+              s.notify("Enter a six-digit colour, for example #2764d9");
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      </label>
+      <button
+        className="tray-primary"
+        onClick={() => {
+          const materialId = "finish-" + crypto.randomUUID();
+          const ok = s.commit("Create custom colour", (p) => {
+            p.materials = [
+              ...(p.materials || []),
+              {
+                id: materialId,
+                name: "Custom colour " + ((p.materials?.length || 0) + 1),
+                color: m.color,
+                roughness: 0.6,
+                rate: 0,
+              },
+            ];
+          });
+          if (ok) {
+            useEditor.getState().applyMaterial(materialId);
+            setQuery("");
+          }
+        }}
+      >
+        Create new colour
+      </button>
       <Range
         label="Opacity"
         value={m.opacity ?? 1}
@@ -907,8 +950,15 @@ export function InspectorTray({ properties }) {
       styles: false,
     });
   useEffect(() => {
-    if (s.inspectorRequest)
+    if (s.inspectorRequest) {
       setOpen((v) => ({ ...v, [s.inspectorPanel]: true }));
+      const frame = requestAnimationFrame(() =>
+        document
+          .getElementById("tray-" + s.inspectorPanel)
+          ?.scrollIntoView({ block: "start", behavior: "smooth" }),
+      );
+      return () => cancelAnimationFrame(frame);
+    }
   }, [s.inspectorPanel, s.inspectorRequest]);
   useEffect(() => {
     if (s.tab === "materials" || (s.tab === "properties" && s.selection.length))

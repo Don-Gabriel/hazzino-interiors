@@ -49,10 +49,21 @@ export function connectedPath(objects) {
   return points;
 }
 
-export function sweepProfile(profile, paths, { align = true } = {}) {
-  if (!profile.isFace || profile.locked || paths.some((o) => o.locked))
+export function sweepProfile(profile, paths, { align = true, triangle } = {}) {
+  if (
+    !profile ||
+    (!profile.isFace && triangle == null) ||
+    profile.locked ||
+    paths.some((o) => o.locked)
+  )
     throw Error("Follow Me needs an unlocked flat face and path");
-  const region = faceRegion(profile),
+  const faceTriangle =
+    triangle ??
+    (profile.kind === "box" && profile.isFace
+      ? (profile.thinAxis ?? profile.size.indexOf(Math.min(...profile.size))) *
+        4
+      : 0);
+  const region = faceRegion(profile, faceTriangle),
     points = connectedPath(paths);
   const closed =
     points.length > 2 && points[0].distanceTo(points.at(-1)) < 0.01;

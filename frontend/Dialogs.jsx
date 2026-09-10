@@ -44,6 +44,8 @@ import { ModelLibraryDialog } from "./ModelLibrary.jsx";
 import { FurnitureBuilder, ProductionDialog } from "./FurnitureBuilder.jsx";
 import { MachiningDialog } from "./MachiningDialog.jsx";
 import { MotionDialog } from "./MotionDialog.jsx";
+import { placeBeside } from "../shared/motion.js";
+import { AiFurniture } from "./AiFurniture.jsx";
 export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   return (
     <div
@@ -69,6 +71,7 @@ export function Dialog({ title, subtitle, children, onClose, wide = false }) {
   );
 }
 export function Dialogs({ kind, close }) {
+  if (kind === "ai-furniture") return <AiFurniture close={close} />;
   if (kind === "machining") return <MachiningDialog close={close} />;
   if (kind === "motion") return <MotionDialog close={close} />;
   if (kind === "production") return <ProductionDialog close={close} />;
@@ -395,9 +398,9 @@ function UtilityDialog({ kind, close }) {
         if (!p.layers.some((l) => l.id === name))
           p.layers.push({ id: name, visible: true });
       });
-    if (kind === "board")
-      s.add(
-        [
+    if (kind === "board") {
+      const items = {
+        objects: [
           entity({
             name: shape === "cylinder" ? "Cylinder" : "Custom board",
             kind: shape,
@@ -405,8 +408,11 @@ function UtilityDialog({ kind, close }) {
             position: [0, 0, v.height / 2],
           }),
         ],
-        "Create solid",
-      );
+      };
+      placeBeside(items, s.project.objects);
+      if (!s.add(items, "Create solid")) return;
+      setTimeout(() => s.engine?.fit(true), 50);
+    }
     if (kind === "array") s.duplicate([v.x, v.y, v.z], Math.round(v.count));
     if (kind === "mirror") {
       const i = "XYZ".indexOf(axis),

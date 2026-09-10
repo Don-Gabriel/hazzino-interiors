@@ -537,7 +537,7 @@ export class EditorEngine {
           mat.color.set(
             ["monochrome", "hidden-line"].includes(s.displayStyle)
               ? "#f4f2e9"
-              : mat.map
+              : mat.map && material.grain && !material.map
                 ? "#ffffff"
                 : material.color,
           );
@@ -746,8 +746,9 @@ export class EditorEngine {
         : s.plane === "XZ"
           ? new T.Vector3(0, 1, 0)
           : new T.Vector3(1, 0, 0);
+    const planeOffset = this.points.length ? this.points[0].dot(normal) : 0;
     let p = this.ray.ray.intersectPlane(
-      new T.Plane(normal, 0),
+      new T.Plane(normal, -planeOffset),
       new T.Vector3(),
     );
     if (!p && s.tool === "move-snap")
@@ -767,8 +768,38 @@ export class EditorEngine {
         if (this.snapMove?.ids.includes(id)) continue;
         const o = s.project.objects.find((v) => v.id === id);
         m.updateMatrixWorld();
-        if (o.kind === "box" || o.kind === "cylinder") {
-          const f = boxFeatures(o);
+        if (!["line", "dimension"].includes(o.kind)) {
+          let f;
+          if (o.kind === "box" && !o.openings?.length) f = boxFeatures(o);
+          else {
+            // Snap to real geometry, including profiles, cut solids and imports.
+            // Cache local feature edges on the rendered geometry for pointer moves.
+            let local = m.geometry.userData.snapEdges;
+            if (!local) {
+              const edges = new T.EdgesGeometry(m.geometry, 25);
+              const positions = edges.attributes.position;
+              local = Array.from({ length: positions.count }, (_, i) =>
+                new T.Vector3().fromBufferAttribute(positions, i),
+              );
+              m.geometry.userData.snapEdges = local;
+              edges.dispose();
+            }
+            const edges = [];
+            for (let i = 0; i + 1 < local.length; i += 2)
+              edges.push([
+                local[i].clone().applyMatrix4(m.matrixWorld),
+                local[i + 1].clone().applyMatrix4(m.matrixWorld),
+              ]);
+            f = {
+              corners: edges.flat(),
+              edges,
+              midpoints: edges.map(([a, b]) =>
+                a.clone().add(b).multiplyScalar(0.5),
+              ),
+              faces: [],
+              center: m.position.clone(),
+            };
+          }
           f.corners.forEach((p) =>
             candidates.push({ p, type: "Endpoint", id }),
           );
@@ -851,7 +882,8 @@ export class EditorEngine {
         if (
           DRAWING_TOOLS.includes(s.tool) &&
           !["line", "measure"].includes(s.tool) &&
-          Math.abs(c.p.dot(normal)) > 0.01
+          this.points.length > 0 &&
+          Math.abs(c.p.dot(normal) - planeOffset) > 0.01
         )
           continue;
         const q = c.p.clone().project(this.camera);
@@ -899,6 +931,12 @@ export class EditorEngine {
           .round()
           .multiplyScalar(s.project.settings.snap);
         type = "Grid";
+        if (
+          this.points.length &&
+          DRAWING_TOOLS.includes(s.tool) &&
+          !["line", "measure"].includes(s.tool)
+        )
+          snapped.addScaledVector(normal, planeOffset - snapped.dot(normal));
       }
     }
     if (s.axis && this.points.length && allowSnap) {
@@ -1354,7 +1392,7 @@ export class EditorEngine {
       const results = booleanObjects(sources, operation);
       if (useEditor.getState().project !== project)
         throw Error("The design changed. Select the solids and try again.");
-      before.commit("Solid " + operation, (p) => {
+      const ok = before.commit("Solid " + operation, (p) => {
         const removed = new Set(
           (operation === "trim" ? sources.slice(0, 1) : sources).map(
             (o) => o.id,
@@ -1364,10 +1402,8 @@ export class EditorEngine {
           (o) => !removed.has(o.id) && !removed.has(o.hostId),
         );
         p.objects.push(...results);
-        p.groups = p.groups.filter((g) =>
-          p.objects.some((o) => o.groupId === g.id),
-        );
       });
+      if (!ok) return;
       before.set({
         selection: results.map((o) => o.id),
         face: null,

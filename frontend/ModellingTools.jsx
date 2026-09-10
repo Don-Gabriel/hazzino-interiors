@@ -120,7 +120,14 @@ export function FollowMeIcon({ size = 18, ...props }) {
 }
 export function FollowMeDialog({ close }) {
   const s = useEditor(),
-    faces = s.project.objects.filter((o) => o.isFace && !o.locked),
+    selectedSolid =
+      s.face &&
+      s.project.objects.find(
+        (o) => s.selection.includes(o.id) && !o.isFace && !o.locked,
+      ),
+    faces = s.project.objects.filter(
+      (o) => (o.isFace || o.id === selectedSolid?.id) && !o.locked,
+    ),
     curves = s.project.objects.filter((o) => o.kind === "line" && !o.locked);
   const [faceId, setFaceId] = useState(
     faces.find((o) => s.selection.includes(o.id))?.id || faces[0]?.id || "",
@@ -134,21 +141,30 @@ export function FollowMeDialog({ close }) {
   async function apply() {
     setBusy(true);
     try {
+      const project = s.project;
       const { initKernel } = await import("../shared/solid-kernel.js");
       await initKernel();
       const { sweepProfile } = await import("../shared/sweep.js");
       const result = sweepProfile(
         faces.find((o) => o.id === faceId),
         curves.filter((o) => paths.includes(o.id)),
-        { align },
+        {
+          align,
+          triangle: faceId === selectedSolid?.id ? s.face.triangle : undefined,
+        },
       );
       if (!result) throw Error("The sweep produced no solid");
-      s.commit("Follow Me", (p) => {
+      if (useEditor.getState().project !== project)
+        throw Error("The design changed. Choose the profile and path again.");
+      const ok = s.commit("Follow Me", (p) => {
         p.objects = p.objects.filter(
-          (o) => o.id !== faceId && (keepPath || !paths.includes(o.id)),
+          (o) =>
+            (o.id !== faceId || o.id === selectedSolid?.id) &&
+            (keepPath || !paths.includes(o.id)),
         );
         p.objects.push(result);
       });
+      if (!ok) return;
       s.set({ selection: [result.id], face: null, tool: "select" });
       close();
     } catch (error) {

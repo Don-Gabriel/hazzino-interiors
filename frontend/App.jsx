@@ -796,6 +796,12 @@ function ComponentLibrary() {
       >
         <Columns3 size={17} /> Furniture studio
       </button>
+      <button
+        className="secondary full"
+        onClick={() => s.set({ modal: "ai-furniture" })}
+      >
+        AI · Build furniture from instructions
+      </button>
       {libraryItems.map(([id, name, desc, I]) => (
         <button
           className="library-card"
@@ -1036,6 +1042,12 @@ function Properties() {
       </div>
       <div className="panel-section">
         <h3>EXACT DISPLACEMENT · MM</h3>
+        <button
+          className="secondary full"
+          onClick={() => s.set({ tool: "move-snap" })}
+        >
+          Snap move · pick source, then destination
+        </button>
         <div className="numeric-triple">
           {["X", "Y", "Z"].map((l, i) => (
             <Numeric
@@ -1065,7 +1077,7 @@ function Properties() {
         <h3>MATERIAL & ORGANISATION</h3>
         <button
           className="material-selected"
-          onClick={() => s.set({ tab: "materials" })}
+          onClick={() => s.showPanel("materials")}
         >
           <span
             style={{
@@ -1085,7 +1097,7 @@ function Properties() {
             onChange={(e) =>
               s.commit("Assign layer", (p) =>
                 p.objects
-                  .filter((v) => s.selection.includes(v.id))
+                  .filter((v) => s.selection.includes(v.id) && !v.locked)
                   .forEach((v) => (v.layer = e.target.value)),
               )
             }
