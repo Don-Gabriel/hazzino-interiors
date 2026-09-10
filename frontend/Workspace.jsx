@@ -217,10 +217,8 @@ export function StudioMenuBar({ importProject }) {
       </div>
       <div className="top-spacer" />
       <span className="database-badge">
-        <i
-          className={"status-dot " + (s.dbStatus === "MongoDB" ? "online" : "")}
-        />
-        {s.dbStatus === "MongoDB" ? "MongoDB connected" : s.dbStatus}
+        <i className={"status-dot " + (s.dbConnected ? "online" : "")} />
+        {s.dbConnected ? s.dbStatus + " connected" : s.dbStatus}
       </span>
       <ToolButton
         icon={PanelLeft}

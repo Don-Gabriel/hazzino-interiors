@@ -16,7 +16,7 @@ export const shortcutGroups = [
   {
     name: "Project & help",
     items: [
-      ["Ctrl S", "Save to MongoDB"],
+      ["Ctrl S", "Save project"],
       ["Ctrl Shift S", "Save a project copy"],
       ["Ctrl Alt N", "New project"],
       ["Ctrl Alt O / F10", "Open projects"],

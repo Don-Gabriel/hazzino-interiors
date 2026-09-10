@@ -187,7 +187,7 @@ export default function App() {
     const h = setInterval(() => useEditor.getState().checkDb(), 15000),
       a = setInterval(() => {
         const t = useEditor.getState();
-        if (t.dirty && t.dbStatus === "MongoDB") t.save();
+        if (t.dirty && t.dbConnected) t.save();
       }, 30000);
     return () => {
       clearInterval(h);
@@ -255,11 +255,7 @@ export default function App() {
             </button>
           )}
           <span>
-            <i
-              className={
-                "status-dot " + (s.dbStatus === "MongoDB" ? "online" : "")
-              }
-            />
+            <i className={"status-dot " + (s.dbConnected ? "online" : "")} />
             {s.saveStatus}
           </span>
         </div>

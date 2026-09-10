@@ -577,7 +577,7 @@ function UtilityDialog({ kind, close }) {
             />
             <p className="hint">
               All coordinates are stored in millimetres. Recovery is written
-              after each edit; MongoDB autosave runs every 30 seconds.
+              after each edit; connected storage autosaves every 30 seconds.
             </p>
           </>
         )}
@@ -662,7 +662,11 @@ function Projects({ close }) {
   return (
     <Dialog
       title="Your projects"
-      subtitle="Stored in your local MongoDB database."
+      subtitle={
+        s.dbStatus === "Cloudflare"
+          ? "Saved to this browser's cloud workspace. Keep browser cookies to retain access, and export JSON for a portable backup."
+          : "Stored in your local MongoDB database."
+      }
       onClose={close}
       wide
     >
@@ -1052,7 +1056,7 @@ function Versions({ close }) {
   return (
     <Dialog
       title="Design checkpoints"
-      subtitle="Named snapshots stored in MongoDB. Restore any checkpoint to continue editing."
+      subtitle="Named snapshots saved with your workspace. Restore any checkpoint to continue editing."
       onClose={close}
     >
       <div className="dialog-content">

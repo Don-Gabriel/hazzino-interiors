@@ -9,3 +9,5 @@ tmp/
 ruvector.db
 .openai/
 output/
+.wrangler/
+.dev.vars*

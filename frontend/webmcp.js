@@ -90,7 +90,7 @@ export function registerModelTools() {
   });
   register({
     name: "save_design",
-    description: "Save the active design to the local MongoDB database.",
+    description: "Save the active design to the connected workspace storage.",
     inputSchema: {
       type: "object",
       properties: {},

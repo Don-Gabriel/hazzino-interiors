@@ -7,7 +7,10 @@
     "dev": "concurrently -k -n API,WEB \"node --env-file-if-exists=.env --watch backend/server.js\" \"vite --host 127.0.0.1\"",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env backend/server.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dev:cloudflare": "npm run build && wrangler dev --port 8787",
+    "deploy:cloudflare": "npm run build && wrangler deploy",
+    "test:cloudflare": "node --test tests/cloudflare.integration.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -23,6 +26,7 @@
     "zustand": "latest"
   },
   "devDependencies": {
-    "prettier": "^3.9.6"
+    "prettier": "^3.9.6",
+    "wrangler": "4.130.0"
   }
 }

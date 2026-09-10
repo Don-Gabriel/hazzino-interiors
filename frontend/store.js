@@ -90,6 +90,7 @@ export const useEditor = create((set, get) => ({
   status: "Ready to create",
   saveStatus: "Local recovery ready",
   dbStatus: "connecting",
+  dbConnected: false,
   modal: null,
   tab: "properties",
   leftTab: "model",
@@ -551,7 +552,7 @@ export const useEditor = create((set, get) => ({
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
       set({
-        saveStatus: "Saved to MongoDB",
+        saveStatus: "Saved to " + (d.storageLabel || "MongoDB"),
         dirty: get().project !== s.project,
         status: "Project saved",
       });
@@ -566,9 +567,9 @@ export const useEditor = create((set, get) => ({
     try {
       const r = await fetch("/api/health");
       const d = await r.json();
-      set({ dbStatus: d.database });
+      set({ dbStatus: d.database, dbConnected: r.ok && d.ok === true });
     } catch {
-      set({ dbStatus: "offline" });
+      set({ dbStatus: "offline", dbConnected: false });
     }
   },
 }));

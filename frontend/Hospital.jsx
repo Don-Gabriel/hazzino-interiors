@@ -31,7 +31,11 @@ export function Hospital({ close }) {
       const r = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, current: s.project.hospitalIntent, project:s.project }),
+        body: JSON.stringify({
+          prompt,
+          current: s.project.hospitalIntent,
+          project: s.project,
+        }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -65,11 +69,13 @@ export function Hospital({ close }) {
       <div className="hospital-panel">
         <p className="ai-connection">
           {config
-            ? `${config.configured ? "Gemini key configured" : "Gemini key needed in .env"} · ${config.model} · ${config.tier} tier (configured)`
+            ? config.message ||
+              `${config.configured ? "Gemini key configured" : "Gemini key needed in .env"} · ${config.model} · ${config.tier} tier (configured)`
             : "Checking Gemini connection…"}
         </p>
         <label>
-          Describe your design — e.g. Create a wardrobe 1200 mm wide, 600 mm deep, 2100 mm high in the right corner
+          Describe your design — e.g. Create a wardrobe 1200 mm wide, 600 mm
+          deep, 2100 mm high in the right corner
           <textarea
             aria-label="Hospital design command"
             value={prompt}

@@ -2,6 +2,8 @@
 
 A working local browser modeller for architecture, interiors, and individually editable furniture boards. Built from the supplied furniture CAD hackathon brief, with room layouts, true rectangular openings, production quantities, material estimates, and design checkpoints.
 
+The web app also has a Cloudflare deployment with cloud project storage and checkpoints. See [Cloudflare deployment](documentation/CLOUDFLARE.md) for publishing, testing and storage details, and [the SketchUp feature audit](documentation/SKETCHUP-WORKSPACE.md) for the current implementation and remaining gaps.
+
 ## Open the application
 
 The development app runs at **http://127.0.0.1:5173/**. The Node API runs at **http://127.0.0.1:3001/**.
