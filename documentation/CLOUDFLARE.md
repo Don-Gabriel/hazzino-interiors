@@ -1,5 +1,14 @@
 # Cloudflare deployment
 
+## Clearance correction — 10 September 2026, 2:47 pm IST
+
+- Live app: [hazzino-interiors.hazzino-studio.workers.dev](https://hazzino-interiors.hazzino-studio.workers.dev).
+- Source: [`3810c17`](https://github.com/Don-Gabriel/hazzino-interiors/commit/3810c17).
+- Current Cloudflare version: `8f6a7a59-9b1b-46ea-bbc5-d234c170b7eb`.
+- 100 ordinary tests and six local Cloudflare integration tests passed. All **six integration tests also passed against this public deployment**.
+- The live browser generated the corrected 93-part wardrobe, verified both-door clearance in the preview, blocked a door closing against an extended drawer, and ran the complete current/closed/opening audit with zero intersections or blocked opening paths. Saved **Furniture clearance · Corrected demonstration** to the browser's cloud workspace. No console errors or warnings were observed.
+- New manual hinge/slide controls, insertion spacing and inaccessible sliding-layout validation are included. See [the clearance guide](CLEARANCE-AND-MANUAL-BUILD.md) for operation and limits. Existing project geometry is preserved; use Edit furniture to regenerate old construction with the new clearances.
+
 ## Furniture release — 10 September 2026
 
 - Live app: [hazzino-interiors.hazzino-studio.workers.dev](https://hazzino-interiors.hazzino-studio.workers.dev).
