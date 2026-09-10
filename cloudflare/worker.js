@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { validateProject, MATERIALS } from "../shared/model.js";
+import { generateDesign } from "../shared/ai-design.js";
 import {
   geminiStatus,
   verifyGeminiKeys,
@@ -62,7 +63,10 @@ export default {
     if (url.pathname === "/api/materials" && request.method === "GET")
       return json(MATERIALS);
     // One global budget shared by every browser and every key, persisted in SQLite.
-    if (url.pathname.startsWith("/api/furniture-ai/"))
+    if (
+      url.pathname.startsWith("/api/furniture-ai/") ||
+      url.pathname.startsWith("/api/ai/")
+    )
       return env.WORKSPACES.get(
         env.WORKSPACES.idFromName("global-furniture-ai-budget"),
       ).fetch(request);
@@ -169,13 +173,20 @@ export class WorkspaceStore extends DurableObject {
     try {
       const url = new URL(request.url),
         method = request.method;
-      if (url.pathname.startsWith("/api/furniture-ai/")) {
+      if (
+        url.pathname.startsWith("/api/furniture-ai/") ||
+        url.pathname.startsWith("/api/ai/")
+      ) {
         if (url.pathname.endsWith("/status") && method === "GET")
           return json(
             geminiStatus(
               this.env,
               (await this.ctx.storage.get("geminiUsage")) || {},
             ),
+          );
+        if (url.pathname.endsWith("/usage") && method === "GET")
+          return json(
+            ((await this.ctx.storage.get("geminiUsage")) || {}).entries || [],
           );
         if (method !== "POST")
           return json({ error: "Method not allowed" }, 405);
@@ -189,18 +200,25 @@ export class WorkspaceStore extends DurableObject {
             return json({ error: "Unknown AI route" }, 404);
           const body = await readJson(request);
           let ledger = (await this.ctx.storage.get("geminiUsage")) || {};
-          const result = await generateFurniturePlan(this.env, body.prompt, {
+          const design = url.pathname.startsWith("/api/ai/");
+          const hooks = {
             reserve: async () => {
               ledger = reserveDemo(ledger);
               await this.ctx.storage.put("geminiUsage", ledger);
             },
             record: async (usage) => {
+              usage.createdAt = new Date().toISOString();
+              usage.operation = design ? "design-studio" : "furniture";
               ledger.actualTokens =
                 (ledger.actualTokens || 0) + usage.totalTokens;
               ledger.last = usage;
+              ledger.entries = [usage, ...(ledger.entries || [])].slice(0, 100);
               await this.ctx.storage.put("geminiUsage", ledger);
             },
-          });
+          };
+          const result = design
+            ? await generateDesign(this.env, body, hooks)
+            : await generateFurniturePlan(this.env, body.prompt, hooks);
           return json(result);
         } finally {
           this.aiBusy = false;
@@ -213,23 +231,6 @@ export class WorkspaceStore extends DurableObject {
           storage: "Workspace SQLite",
           workspaceMode: "browser",
         });
-      if (url.pathname === "/api/ai/status" && method === "GET")
-        return json({
-          configured: false,
-          model: "Gemini",
-          tier: "unconfigured",
-          message:
-            "Gemini is not connected on this deployment. The built-in template remains available.",
-        });
-      if (url.pathname === "/api/ai/usage" && method === "GET") return json([]);
-      if (url.pathname === "/api/ai/generate" && method === "POST")
-        return json(
-          {
-            error:
-              "Gemini is not connected on this deployment. Use the built-in template or the configured local app.",
-          },
-          503,
-        );
       if (url.pathname === "/api/projects" && method === "GET")
         return json(
           this.sql

@@ -5,6 +5,29 @@ import { buildFurniture, defaultFurnitureSpec } from "../shared/furniture.js";
 import { readFile } from "node:fs/promises";
 
 const base = process.env.CLOUDFLARE_TEST_URL || "http://127.0.0.1:8787";
+test("Both AI dialogs expose the same cloud configuration and budget without generating tokens", async () => {
+  const a = await (await fetch(base + "/api/ai/status")).json();
+  const b = await (await fetch(base + "/api/furniture-ai/status")).json();
+  for (const key of [
+    "configured",
+    "enabled",
+    "model",
+    "keyCount",
+    "limits",
+    "usage",
+  ])
+    assert.deepEqual(a[key], b[key]);
+  assert.ok(a.limits?.tokensPerDay);
+  const usage = await fetch(base + "/api/ai/usage");
+  assert.equal(usage.status, 200);
+  assert.ok(Array.isArray(await usage.json()));
+  const invalid = await fetch(base + "/api/ai/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: "" }),
+  });
+  assert.equal(invalid.status, 400);
+});
 async function browserWorkspace() {
   const health = await fetch(base + "/api/health");
   assert.equal(health.status, 200);

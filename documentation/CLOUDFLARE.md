@@ -1,10 +1,16 @@
 # Cloudflare deployment
 
-## Final key setup — 10 September 2026, 3:44 pm IST
+## Current release — AI Design Studio connection fix
+
+**AI Design Studio connection fix — verified live:** the separate dialog under **Extensions → AI Hospital…** now uses the deployed five Gemini keys and the same daily budget as the furniture generator. The exact default 6 × 5 m patient-room prompt generated a two-bed layout with cabinets, IV stands and a 1,200 mm central strip. Its **36 editable objects** were applied and the browser confirmed **Saved to Cloudflare**. All implemented layout checks passed; this is not a healthcare-code certification. The request used **328 input + 140 output = 468 tokens (key 1)**. Afterwards the shared ledger recorded **8 attempts, 7,291 actual reported tokens and 48,000 reserved tokens out of 60,000**: at that snapshot, two further 6,000-token attempt reservations remained for the UTC day. The allowance is unchanged. This release passed **19 targeted tests and 7 live Cloudflare integration tests**, plus the build and deployment dry run. Worker version: `6cf549da-1c2e-47c4-81eb-614689644504`.
+
+
+
+## Historical key setup (superseded below) — 10 September 2026, 3:44 pm IST
 
 All five supplied keys passed local and Worker-side model metadata checks and were installed as secrets after the owner confirmed Free tier. The model is now `gemini-3.5-flash-lite`, with supported minimal thinking and unchanged output/budget caps. Code deployment `90dccf9b-1019-463c-adfb-43ca1e90bbf8` was followed by a secret-change deployment. All seven targeted regressions and the build passed. Real local generation returned an 1800 × 600 × 2400 mm wardrobe plan using 358 tokens; its generated 93-part assembly validated. **Worker-side generation still returns HTTP 404 despite successful metadata verification. Use localhost:5173 for AI; this cloud-specific issue remains unresolved.** This update supersedes the earlier unconfigured status below.
 
-## Current release — modelling corrections and furniture AI, 10 September 2026
+## Historical release — modelling corrections and furniture AI, 10 September 2026
 
 - Current version: `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`; published before the 3:40 pm IST cutoff.
 - Asset: `index-DC9IQ_TS.js`. All 112 ordinary tests and the production build passed.
@@ -61,7 +67,7 @@ An HttpOnly, SameSite cookie identifies an anonymous browser workspace. Clearing
 
 The cloud API validates the same project schema as the local app and accepts request bodies up to 20 MiB. Project documents are stored in small SQLite rows, preserving large documents, embedded textures and Unicode. Document updates and project deletion use transactions.
 
-Live Gemini generation is not connected to this cloud deployment. Local `.env` secrets and the MongoDB database are not uploaded. The browser uses converted SKP assets; native SKP decoding is not implemented.
+The original release did not connect live Gemini generation; this limitation is superseded by the AI releases below. Local `.env` secrets and the MongoDB database are not uploaded. The browser uses converted SKP assets; native SKP decoding is not implemented.
 
 ## Develop, test and publish
 

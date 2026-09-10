@@ -13,16 +13,21 @@ export function Hospital({ close }) {
     [error, setError] = useState(""),
     [result, setResult] = useState(null),
     [usage, setUsage] = useState([]);
-  useEffect(() => {
+  function refreshUsage() {
     fetch("/api/ai/status")
       .then((r) => r.json())
       .then(setConfig)
-      .catch(() => setError("AI service unavailable. Check the local server."));
+      .catch(() =>
+        setError(
+          "AI service unavailable. Check your connection and try again.",
+        ),
+      );
     fetch("/api/ai/usage")
       .then((r) => r.json())
       .then((v) => setUsage(Array.isArray(v) ? v : []))
       .catch(() => {});
-  }, []);
+  }
+  useEffect(refreshUsage, []);
   const report = validateHospital(s.project);
   async function generate() {
     setBusy(true);
@@ -40,15 +45,15 @@ export function Hospital({ close }) {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
       setResult(data);
-      setUsage((v) => [data.usage, ...v]);
     } catch (e) {
       setError(e.message);
     } finally {
       setBusy(false);
+      refreshUsage();
     }
   }
   function apply(project) {
-    s.commit("Generate hospital layout", (p) => {
+    const applied = s.commit("Apply AI design", (p) => {
       p.objects = project.objects;
       p.groups = project.groups;
       p.layers = project.layers;
@@ -56,6 +61,12 @@ export function Hospital({ close }) {
       p.hospitalIntent = project.hospitalIntent;
       p.name = project.name;
     });
+    if (applied === false) {
+      setError(
+        "The generated design could not be applied. Check its dimensions.",
+      );
+      return;
+    }
     s.set({ selection: [], modal: null });
     setTimeout(() => useEditor.getState().engine?.fit(), 100);
   }
@@ -70,7 +81,7 @@ export function Hospital({ close }) {
         <p className="ai-connection">
           {config
             ? config.message ||
-              `${config.configured ? "Gemini key configured" : "Gemini key needed in .env"} · ${config.model} · ${config.tier} tier (configured)`
+              `${config.configured ? "Gemini keys configured" : "Gemini keys not configured"} · ${config.model}${config.keyCount ? ` · ${config.keyCount} key slots` : ""}${config.enabled === false ? " · Free-tier confirmation required" : ""}`
             : "Checking Gemini connection…"}
         </p>
         <label>
@@ -80,12 +91,16 @@ export function Hospital({ close }) {
             aria-label="Hospital design command"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            maxLength={4000}
+            maxLength={config?.limits?.promptCharacters || 2000}
             rows={3}
           />
         </label>
         <div className="hospital-actions">
-          <button className="primary" disabled={busy} onClick={generate}>
+          <button
+            className="primary"
+            disabled={busy || !config?.configured || config?.enabled === false}
+            onClick={generate}
+          >
             {busy ? "Gemini is designing…" : "Generate with Gemini"}
           </button>
           <button
@@ -124,9 +139,15 @@ export function Hospital({ close }) {
               {result.plan.name}
             </h3>
             <p>
-              {result.plan.width / 1000} × {result.plan.depth / 1000} m ·{" "}
-              {result.plan.beds} beds · {result.plan.corridor} mm circulation
-              strip
+              {result.plan.action === "wardrobe" ? (
+                `${result.plan.width} × ${result.plan.depth} × ${result.plan.height} mm · ${result.plan.placement || "back-right"}`
+              ) : (
+                <>
+                  {result.plan.width / 1000} × {result.plan.depth / 1000} m ·{" "}
+                  {result.plan.beds} beds · {result.plan.corridor} mm
+                  circulation strip
+                </>
+              )}
             </p>
             <p>{result.plan.explanation}</p>
             <p>{result.validation.summary}</p>
@@ -138,8 +159,8 @@ export function Hospital({ close }) {
             {result.usage && (
               <p>
                 {result.usage.inputTokens} input + {result.usage.outputTokens}{" "}
-                output tokens · paid-rate estimate $
-                {result.usage.estimatedPaidUsd?.toFixed(6) ?? "unavailable"}
+                output tokens · {result.usage.totalTokens} total
+                {result.usage.slot ? ` · key ${result.usage.slot}` : ""}
               </p>
             )}
             <button className="primary" onClick={() => apply(result.project)}>
@@ -190,11 +211,22 @@ export function Hospital({ close }) {
         <div className="ai-result">
           <h3>AI usage ledger</h3>
           <p>
-            {usage.length} recent successful requests ·{" "}
+            {usage.length} recent provider responses with usage ·{" "}
             {usage.reduce((n, v) => n + v.totalTokens, 0)} tokens. Manual
-            modeling and local templates use zero Gemini tokens. Cost is a
-            paid-rate projection, not an invoice.
+            modeling and local templates use zero Gemini tokens. Usage includes
+            responses rejected as incomplete or invalid.
           </p>
+          {config?.limits && (
+            <p>
+              Shared daily budget: {config.usage?.actualTokens || 0} reported
+              tokens; {config.usage?.reservedTokens || 0} /{" "}
+              {config.limits.tokensPerDay} reserved tokens;{" "}
+              {config.usage?.attempts || 0} attempts. Each attempt reserves{" "}
+              {config.limits.reservationTokens} tokens. Both AI dialogs share
+              this budget. Billing status is owner-confirmed, not verified by
+              the API.
+            </p>
+          )}
           <button
             onClick={() =>
               download(

@@ -8,9 +8,11 @@ Build date: 10 September 2026. This guide describes the furniture demonstration 
 
 **Cloud AI verification update (10 September, 3:53 pm IST):** AI generation on the public Cloudflare app is now verified. The prompt `Build a wardrobe 1800 mm wide, 600 mm deep and 2400 mm high.` returned a specification that was inserted as **62 editable objects** in the project **AI furniture · Jury verification**. Save was invoked. All five supplied keys passed model-access verification and are installed as Worker secrets; the owner confirmed all five projects are Free tier. A more complex generated design failed insertion with “Dimensions must be greater than zero”, and some longer responses were rejected as incomplete. Use the tested prompt for the demo; arbitrary instructions are not guaranteed to generate usable furniture. The earlier cloud HTTP 404 failure is no longer reproduced by the verified request.
 
+**AI Design Studio connection fix — verified live:** the separate dialog under **Extensions → AI Hospital…** now uses the deployed five Gemini keys and the same daily budget as the furniture generator. The exact default 6 × 5 m patient-room prompt generated a two-bed layout with cabinets, IV stands and a 1,200 mm central strip. Its **36 editable objects** were applied and the browser confirmed **Saved to Cloudflare**. All implemented layout checks passed; this is not a healthcare-code certification. The request used **328 input + 140 output = 468 tokens (key 1)**. Afterwards the shared ledger recorded **8 attempts, 7,291 actual reported tokens and 48,000 reserved tokens out of 60,000**: at that snapshot, two further 6,000-token attempt reservations remained for the UTC day. The allowance is unchanged. This release passed **19 targeted tests and 7 live Cloudflare integration tests**, plus the build and deployment dry run. Worker version: `6cf549da-1c2e-47c4-81eb-614689644504`.
+
 ### API tokens, fallback and demo limits
 
-Usage snapshot: **10 September 2026, 3:52:51 pm IST**, shared Cloudflare ledger.
+Earlier usage snapshot: **10 September 2026, 3:52:51 pm IST**, shared Cloudflare ledger. The newer Design Studio snapshot above supersedes its remaining allowance.
 
 | Measure | Recorded value |
 |---|---|
@@ -197,6 +199,16 @@ Open **Furniture → AI · Build from instructions**. The service translates tex
 
 The AI supports the eight furniture types, overall dimensions, board thickness, selected materials, fronts and simple compartments. AI kitchen generation currently uses a straight four-module arrangement; use the Furniture builder for richer kitchen layouts. Do not present unverified AI interpretations as manufacturing-ready designs.
 
+### AI Design Studio on Cloudflare
+
+Open **Extensions → AI Hospital…** to reach the **AI Design Studio** dialog shown in the demonstration. Its cloud status and generation routes now use the same server-side Gemini credentials and shared token allowance as Furniture → AI · Build from instructions. This fixes the hardcoded “Gemini is not connected” response in the older cloud route. If an already-open browser still shows it, save the design and refresh the page.
+
+Enter the default request: `Create a 6m by 5m patient room with two beds, bedside cabinets, IV stands and a 1.2m central pathway.` Click **Generate with Gemini**, review the proposed dimensions, explanation and layout warnings, then choose **Apply layout to current project (undoable)**. Applying a room replaces that project's layout; use a new project for a demonstration. Save explicitly afterwards.
+
+**What if: four beds?** uses the applied room intent for dimensions. Wardrobe requests require an existing room envelope and support a corner or centre placement; room fit is validated. Surrounding geometry must still be reviewed. These bounded room plans support beds, bedside cabinets and IV stands; they are not arbitrary room-design generation or healthcare-code certification.
+
+The dialog shows provider-reported input/output/total tokens and a shared daily total alongside reserved tokens and attempts. **Download token ledger** exports recorded response usage; history recording for this dialog starts with this fix, while the shared daily total retains earlier attempts. An incomplete or invalid response can consume tokens even though no geometry is applied. Templates and manual editing use no Gemini tokens.
+
 ### Local keys
 
 Edit **`C:\WorkSpace\Hazzino\.env`**, which is excluded from Git:
@@ -223,7 +235,7 @@ The new furniture AI has one shared budget across all five keys: two upstream at
 
 Actual returned input/output/total token counts and the successful slot are recorded. Attempts can fall back for invalid/unavailable keys or transient service responses, within the same caps. Google 429 quota errors stop the request; keys are not rotated to bypass project quota. Network timeouts stop to avoid duplicate retries. No paid-model fallback, search grounding, image generation or agent loop is used.
 
-Zero charges require a genuinely Free-tier Google project. These local caps reduce exposure but cannot turn paid-tier requests into free requests, and they do not govern another application using the same keys. The separate legacy hospital AI extension is not the furniture demo and is not covered by this new token ledger.
+Zero charges require a genuinely Free-tier Google project. These local caps reduce exposure but cannot turn paid-tier requests into free requests, and they do not govern another application using the same keys. On Cloudflare, AI Design Studio (Extensions → AI Hospital) now shares these same five credentials and this same budget with the furniture dialog. The older local hospital endpoint retains its separate local configuration and ledger.
 
 Official references: [pricing](https://ai.google.dev/gemini-api/docs/pricing), [project rate limits](https://ai.google.dev/gemini-api/docs/rate-limits).
 
@@ -245,7 +257,7 @@ Browser evidence in this pass: created a separate custom swatch, entered `#245ee
 
 All six cloud integration tests passed against the modelling release `9cd7ad1f-52d0-4aea-b672-c9d09d2a28dc`. Browser checks additionally verified layer reassignment, Change finish scrolling and the AI dialog's generation block before Free-tier confirmation. All five supplied keys subsequently passed real model-metadata requests (1,048,576 input / 65,536 output context limits); those are model context sizes, not free usage allowances. All five keys have now been installed as Cloudflare secrets. The subsequent Flash-Lite update passed all seven targeted regression tests and the production build.
 
-Real Gemini generation is verified locally for the specific wardrobe request recorded above. Cloud generation remains unverified and failed with HTTP 404. Mock tests establish fallback/budget behaviour; they are not evidence that every possible model instruction is interpreted correctly or that billing can be verified by an API key. Final deployment/check results are recorded in `CLOUDFLARE.md` and the build log.
+Real Gemini generation is verified locally for the specific wardrobe request recorded above. The furniture cloud generation subsequently succeeded for the 62-part wardrobe recorded at the start of this guide; the earlier HTTP 404 status is superseded. Mock tests establish fallback/budget behaviour; they are not evidence that every possible model instruction is interpreted correctly or that billing can be verified by an API key. Final deployment/check results are recorded in `CLOUDFLARE.md` and the build log.
 
 Remaining scope limits include connected SketchUp edge/face topology, shared native component definitions, extension compatibility, native SKP/DWG/DXF/IFC round trips, user accounts/collaboration, photorealistic ray tracing, arbitrary automatic tilted planes and full physical simulation. Colour adjustments in non-colour display styles are intentionally hidden. Gizmo move is grid-based; use point-to-point movement for feature alignment. Outer shell is union. No claim of complete SketchUp cloning or automatic fabrication certification is made.
 

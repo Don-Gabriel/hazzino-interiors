@@ -169,10 +169,27 @@ const schema = {
     "omitted",
   ],
 };
-export async function generateFurniturePlan(
+export async function generateFurniturePlan(env, prompt, options = {}) {
+  const result = await generateStructuredPlan(env, prompt, options);
+  if (
+    !schema.properties.type.enum.includes(result.plan.type) ||
+    ["width", "height", "depth"].some((k) => !Number.isFinite(result.plan[k]))
+  )
+    throw Error("Gemini returned invalid furniture dimensions.");
+  return result;
+}
+
+export async function generateStructuredPlan(
   env,
   prompt,
-  { reserve, record, fetcher = fetch } = {},
+  {
+    reserve,
+    record,
+    fetcher = fetch,
+    responseSchema = schema,
+    systemInstruction,
+    content,
+  } = {},
 ) {
   const c = geminiConfig(env);
   if (
@@ -209,7 +226,9 @@ export async function generateFurniturePlan(
             systemInstruction: {
               parts: [
                 {
-                  text: "Translate furniture requests into millimetre specifications. Preserve explicitly requested dimensions. Supported furniture: wardrobe, desk, tv unit, loft, shoe rack, bookcase, cabinet, straight modular kitchen. Width and height 200..12000, depth 180..2000, thickness9..50. Bays1..12, shelves/drawers0..12, doors0..2. Use 2 doors for internal mixed drawer bays. Default dimensions: wardrobe1800x600x2400, desk1400x650x750, tv1800x450x500, loft1800x600x600, shoe1000x350x1100, bookcase900x350x1800, cabinet1200x450x900, kitchen3000x580x900 (width x depth x height). Kitchen uses 4 modules: drawers,sink,hob,base. List every unsupported request in omitted; never claim it was built. Return a concise rationale. Do not output code.",
+                  text:
+                    systemInstruction ||
+                    "Translate furniture requests into millimetre specifications. Preserve explicitly requested dimensions. Supported furniture: wardrobe, desk, tv unit, loft, shoe rack, bookcase, cabinet, straight modular kitchen. Width and height 200..12000, depth 180..2000, thickness9..50. Bays1..12, shelves/drawers0..12, doors0..2. Use 2 doors for internal mixed drawer bays. Default dimensions: wardrobe1800x600x2400, desk1400x650x750, tv1800x450x500, loft1800x600x600, shoe1000x350x1100, bookcase900x350x1800, cabinet1200x450x900, kitchen3000x580x900 (width x depth x height). Kitchen uses 4 modules: drawers,sink,hob,base. List every unsupported request in omitted; never claim it was built. Return a concise rationale. Do not output code.",
                 },
               ],
             },
@@ -219,7 +238,7 @@ export async function generateFurniturePlan(
                 parts: [
                   {
                     text:
-                      prompt +
+                      (content || prompt) +
                       "\nReturn a compact specification: explanation at most 40 words, only requested compartments, no repeated entries.",
                   },
                 ],
@@ -227,7 +246,7 @@ export async function generateFurniturePlan(
             ],
             generationConfig: {
               responseMimeType: "application/json",
-              responseSchema: schema,
+              responseSchema,
               temperature: 0.1,
               maxOutputTokens: DEMO_LIMITS.outputTokens,
               thinkingConfig: c.model.startsWith("gemini-3")
@@ -295,11 +314,6 @@ export async function generateFurniturePlan(
     } catch {
       throw Error("Gemini returned invalid JSON. No furniture was added.");
     }
-    if (
-      !schema.properties.type.enum.includes(plan.type) ||
-      ["width", "height", "depth"].some((k) => !Number.isFinite(plan[k]))
-    )
-      throw Error("Gemini returned invalid furniture dimensions.");
     return { plan, usage };
   }
 }
