@@ -357,6 +357,7 @@ export function editorMenus(s = useEditor.getState(), options = {}) {
         modal("solid-tools-panel", "Solid tools panel…", "solid-tools"),
       ]),
       tool("move", "Move", "M"),
+      tool("move-snap", "Move point to point (snap components)"),
       tool("rotate", "Rotate", "Q"),
       tool("scale", "Scale", "S"),
       tool("measure", "Dimension", "D"),

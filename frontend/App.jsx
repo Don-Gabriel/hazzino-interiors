@@ -95,6 +95,7 @@ export const toolList = [
   ["offset", OffsetIcon, "Offset", "F"],
   ["follow-me", FollowMeIcon, "Follow Me", ""],
   ["move", Move3D, "Move", "M"],
+  ["move-snap", Move3D, "Move point to point"],
   ["rotate", Rotate3D, "Rotate", "Q"],
   ["scale", Scaling, "Resize", "S"],
   ["measure", Ruler, "Dimension", "D"],

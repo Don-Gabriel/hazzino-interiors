@@ -1,6 +1,24 @@
 import * as T from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 export const radians = (n) => (n * Math.PI) / 180;
+export function segmentIntersection(a, b, c, d, tolerance = 1e-6) {
+  const u = b.clone().sub(a),
+    v = d.clone().sub(c),
+    w = a.clone().sub(c);
+  const A = u.dot(u),
+    B = u.dot(v),
+    C = v.dot(v),
+    D = u.dot(w),
+    E = v.dot(w),
+    den = A * C - B * B;
+  if (Math.abs(den) < 1e-12 * Math.max(1, A * C)) return null;
+  const s = (B * E - C * D) / den,
+    t = (A * E - B * D) / den;
+  if (s < 0 || s > 1 || t < 0 || t > 1) return null;
+  const p = a.clone().addScaledVector(u, s),
+    q = c.clone().addScaledVector(v, t);
+  return p.distanceTo(q) <= tolerance ? p.add(q).multiplyScalar(0.5) : null;
+}
 export function objectMatrix(o) {
   return new T.Matrix4().compose(
     new T.Vector3(...o.position),

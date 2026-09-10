@@ -30,6 +30,13 @@ export const MATERIALS = [
   },
   { id: "mdf", name: "MDF", color: "#b99a70", roughness: 0.9, rate: 650 },
   {
+    id: "particleboard",
+    name: "Particle board",
+    color: "#bba17d",
+    roughness: 0.95,
+    rate: 600,
+  },
+  {
     id: "white",
     name: "Ivory laminate",
     color: "#e9e8df",

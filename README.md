@@ -55,13 +55,15 @@ Open File → Open projects → **Wardrobe · Hackathon demonstration** or **The
 
 For a manual demonstration from a blank project:
 
+The exact supplied hackathon sequence, dimensions and verification are in [HACKATHON-WORKFLOW.md](documentation/HACKATHON-WORKFLOW.md).
+
 1. Choose **File → New project**.
 2. Select the **XZ drawing plane** and a front camera view.
 3. Press **R**, click two corners, and edit Width X to 600 mm and Height Z to 2100 mm. Keep the rectangle as a face.
 4. In Push/Pull, enter **18 mm** and click the extrusion button.
 5. Press **Ctrl D** to duplicate. Enter exact position or displacement in Properties. Use **M** and a handle for interactive placement.
 6. Create and size more boards for the top, bottom, divider, shelves and doors. The Library wardrobe provides a completed reference. Select moving parts and use **Furniture → Hinges, slides & clearance → Attach to manual parts** to define a hinge or slide; the same obstruction checks apply to manually constructed furniture.
-7. Shift-select parts; **Ctrl G** groups them. Select the assembly in the tree to transform all parts together.
+7. Shift-select parts; **Ctrl G** groups them. Select the assembly in the tree to transform all parts together. **Tools → Move point to point (snap components)** joins a selected part's corner/edge/face to another feature with a live snap indicator; Esc cancels.
 8. Apply a material, save, reload, and reopen from Projects.
 9. Open Quantities or Export to produce the project JSON, mesh, image, or material estimate.
 

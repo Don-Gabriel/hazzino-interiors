@@ -19,6 +19,7 @@ import {
   extrudeObject,
   openingGeometry,
   objectGeometry,
+  segmentIntersection,
 } from "../shared/geometry.js";
 import {
   initKernel,
@@ -214,12 +215,15 @@ export class EditorEngine {
           ...DRAWING_TOOLS,
           "pushpull",
           "offset",
+          "move-snap",
         ].includes(s.tool);
         this.controls.mouseButtons.LEFT =
           s.tool === "pan" ? T.MOUSE.PAN : T.MOUSE.ROTATE;
         this.renderer.domElement.style.cursor =
           TOOL_CURSORS[s.tool] ||
-          (DRAWING_TOOLS.includes(s.tool) ? "crosshair" : "default");
+          (DRAWING_TOOLS.includes(s.tool) || s.tool === "move-snap"
+            ? "crosshair"
+            : "default");
       }
       if (
         s.project !== prev.project ||
@@ -667,13 +671,11 @@ export class EditorEngine {
       matrix.decompose(m.position, m.quaternion, m.scale);
     }
     if (this.invalidTransform)
-      useEditor
-        .getState()
-        .set({
-          status: articulatedScale
-            ? "Use Edit furniture to resize jointed assemblies and preserve clearances. Resize manual boards individually before attaching joints."
-            : "This scale would shear rotated panels. Resize individual boards or use uniform scaling.",
-        });
+      useEditor.getState().set({
+        status: articulatedScale
+          ? "Use Edit furniture to resize jointed assemblies and preserve clearances. Resize manual boards individually before attaching joints."
+          : "This scale would shear rotated panels. Resize individual boards or use uniform scaling.",
+      });
   }
   endTransform() {
     if (!this.dragging) return;
@@ -744,18 +746,25 @@ export class EditorEngine {
         : s.plane === "XZ"
           ? new T.Vector3(0, 1, 0)
           : new T.Vector3(1, 0, 0);
-    const p = this.ray.ray.intersectPlane(
+    let p = this.ray.ray.intersectPlane(
       new T.Plane(normal, 0),
       new T.Vector3(),
     );
+    if (!p && s.tool === "move-snap")
+      p = this.ray.ray.intersectPlane(
+        new T.Plane(this.camera.getWorldDirection(new T.Vector3()), 0),
+        new T.Vector3(),
+      );
     if (!p) return null;
     let type = "",
       anchor = null;
     let snapped = p.clone();
     if (s.snapEnabled && allowSnap) {
-      const candidates = [];
+      const candidates = [],
+        segments = [];
       for (const [id, m] of this.objects) {
         if (!m.visible) continue;
+        if (this.snapMove?.ids.includes(id)) continue;
         const o = s.project.objects.find((v) => v.id === id);
         m.updateMatrixWorld();
         if (o.kind === "box" || o.kind === "cylinder") {
@@ -770,23 +779,74 @@ export class EditorEngine {
             candidates.push({ p, type: "Face center", id }),
           );
           for (const [a, b] of f.edges) {
+            segments.push({ a, b, id });
             const onEdge = new T.Vector3();
             this.ray.ray.distanceSqToSegment(a, b, new T.Vector3(), onEdge);
             candidates.push({ p: onEdge, type: "Edge", id });
           }
           candidates.push({ p: f.center, type: "Center", id });
-        } else if (o.kind === "line")
-          o.points.forEach((v) =>
+        } else if (o.kind === "line") {
+          const linePoints = o.points.map((v) =>
+            vec(v).applyMatrix4(m.matrixWorld),
+          );
+          linePoints.forEach((v) =>
             candidates.push({
-              p: vec(v).applyMatrix4(m.matrixWorld),
+              p: v,
               type: "Endpoint",
               id,
             }),
           );
+          for (let i = 1; i < linePoints.length; i++) {
+            const a = linePoints[i - 1],
+              b = linePoints[i],
+              onEdge = new T.Vector3();
+            segments.push({ a, b, id });
+            candidates.push({
+              p: a.clone().add(b).multiplyScalar(0.5),
+              type: "Midpoint",
+              id,
+            });
+            this.ray.ray.distanceSqToSegment(a, b, new T.Vector3(), onEdge);
+            candidates.push({ p: onEdge, type: "Edge", id });
+          }
+        }
       }
+      const surface = this.ray.intersectObjects(
+        [...this.objects.entries()]
+          .filter(([id, m]) => m.visible && !this.snapMove?.ids.includes(id))
+          .map(([, m]) => m),
+        false,
+      )[0];
+      if (surface?.face)
+        candidates.push({
+          p: surface.point,
+          type: "Face",
+          id: surface.object.userData.id,
+        });
       this.points.forEach((q) => candidates.push({ p: q, type: "Endpoint" }));
-      let best = 12;
+      let best = Infinity;
       const rect = this.renderer.domElement.getBoundingClientRect();
+      const nearSegments = segments.filter(({ a, b }) => {
+        const p = new T.Vector3();
+        this.ray.ray.distanceSqToSegment(a, b, new T.Vector3(), p);
+        p.project(this.camera);
+        return (
+          p.z >= -1 &&
+          p.z <= 1 &&
+          Math.hypot(
+            ((p.x - this.mouse.x) * rect.width) / 2,
+            ((p.y - this.mouse.y) * rect.height) / 2,
+          ) <= 12
+        );
+      });
+      for (let i = 0; i < nearSegments.length; i++)
+        for (let j = i + 1; j < nearSegments.length; j++) {
+          const a = nearSegments[i],
+            b = nearSegments[j];
+          if (a.id === b.id) continue;
+          const p = segmentIntersection(a.a, a.b, b.a, b.b);
+          if (p) candidates.push({ p, type: "Intersection", id: a.id });
+        }
       for (const c of candidates) {
         if (
           DRAWING_TOOLS.includes(s.tool) &&
@@ -800,8 +860,19 @@ export class EditorEngine {
           ((q.x - this.mouse.x) * rect.width) / 2,
           ((q.y - this.mouse.y) * rect.height) / 2,
         );
-        if (d < best) {
-          best = d;
+        const priority =
+          {
+            Endpoint: 0,
+            Intersection: 0,
+            Midpoint: 1,
+            "Face center": 1,
+            Center: 1,
+            Edge: 2,
+            Face: 3,
+          }[c.type] || 0;
+        const score = d + priority * 12;
+        if (d <= 12 && score < best) {
+          best = score;
           snapped = c.p;
           type = c.type;
           if (c.id) {
@@ -848,7 +919,7 @@ export class EditorEngine {
       this.hoverFace(e);
       return;
     }
-    if (!DRAWING_TOOLS.includes(s.tool)) {
+    if (!DRAWING_TOOLS.includes(s.tool) && s.tool !== "move-snap") {
       this.marker.visible = false;
       return;
     }
@@ -867,6 +938,12 @@ export class EditorEngine {
       cursor: { point: hit.point.toArray(), type: hit.type },
     });
     this.drawPreview(hit.point);
+    if (this.snapMove) {
+      const delta = hit.point.clone().sub(this.points[0]);
+      this.snapMove.origins.forEach(({ id, position }) =>
+        this.objects.get(id)?.position.copy(vec(position).add(delta)),
+      );
+    }
   }
   drawPreview(end) {
     this.disposeGroup(this.drawGroup);
@@ -907,6 +984,50 @@ export class EditorEngine {
   }
   click(e) {
     const s = useEditor.getState();
+    if (s.tool === "move-snap") {
+      if (!this.snapMove) {
+        const picked = this.pick(e);
+        if (picked && !s.selection.includes(picked.object.userData.id))
+          s.select(picked.object.userData.id);
+        const current = useEditor.getState(),
+          hit = this.workPoint(e);
+        const parts = current.project.objects.filter(
+          (o) => current.selection.includes(o.id) && !o.locked,
+        );
+        if (
+          !parts.length ||
+          !hit?.anchor ||
+          !parts.some((o) => o.id === hit.anchor.id)
+        ) {
+          current.notify(
+            "Click a corner, midpoint, edge or face on the parts to move",
+          );
+          return;
+        }
+        this.points = [hit.point.clone()];
+        this.snapMove = {
+          ids: parts.map((o) => o.id),
+          origins: parts.map((o) => ({ id: o.id, position: [...o.position] })),
+        };
+        current.notify(
+          "Choose the destination snap point · X/Y/Z constrains · Esc cancels",
+        );
+      } else {
+        const hit = this.workPoint(e);
+        if (!hit) return;
+        const delta = hit.point.clone().sub(this.points[0]),
+          origins = this.snapMove.origins;
+        this.cancelDraw();
+        s.commit("Snap components point to point", (p) =>
+          origins.forEach(({ id, position }) => {
+            const o = p.objects.find((o) => o.id === id);
+            if (o && !o.locked) o.position = vec(position).add(delta).toArray();
+          }),
+        );
+        s.set({ tool: "select" });
+      }
+      return;
+    }
     if (["orbit", "pan", "freehand"].includes(s.tool)) return;
     if (DRAWING_TOOLS.includes(s.tool)) {
       const hit = this.workPoint(e);
@@ -1163,6 +1284,12 @@ export class EditorEngine {
     this.cancelDraw();
   }
   cancelDraw() {
+    if (this.snapMove) {
+      this.snapMove.origins.forEach(({ id, position }) =>
+        this.objects.get(id)?.position.copy(vec(position)),
+      );
+      this.snapMove = null;
+    }
     if (this.operation) {
       this.restoreOperation();
       this.operation = null;

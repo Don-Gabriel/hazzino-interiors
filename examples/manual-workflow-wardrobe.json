@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "id": "08aaea16-0143-4908-8e5e-5e30d9ece712",
+  "name": "Hackathon document · Manual wardrobe",
+  "objects": [
+    {
+      "id": "f2bb2d4b-f00c-4c16-b5c3-32f153a646ee",
+      "name": "Left side",
+      "kind": "box",
+      "position": [
+        9,
+        300,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        600,
+        2100
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false,
+      "isFace": false,
+      "thinAxis": 0
+    },
+    {
+      "id": "dbf86eff-68a7-418f-b0a4-3d25973fdd39",
+      "name": "Right side",
+      "kind": "box",
+      "position": [
+        1191,
+        300,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        600,
+        2100
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false,
+      "isFace": false,
+      "thinAxis": 0
+    },
+    {
+      "id": "b50095a9-3202-4d0e-9834-54232f5849e2",
+      "name": "Bottom",
+      "kind": "box",
+      "position": [
+        600,
+        300,
+        9
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1164,
+        600,
+        18
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "8d4df9ee-c0ff-439d-8ff5-233b77669b25",
+      "name": "Middle divider",
+      "kind": "box",
+      "position": [
+        600,
+        300,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        18,
+        600,
+        2064
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "929b0666-9f35-4a39-9485-15fbd23027ce",
+      "name": "Left shelf",
+      "kind": "box",
+      "position": [
+        304.5,
+        300,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        580,
+        18
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "bc81153c-d844-4369-8525-a18ef00efb84",
+      "name": "Right shelf",
+      "kind": "box",
+      "position": [
+        895.5,
+        300,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        573,
+        580,
+        18
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "3faf034b-e00f-458a-bf88-7f854def3f1f",
+      "name": "Left door",
+      "kind": "box",
+      "position": [
+        300,
+        -11,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        597,
+        18,
+        2096
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "a03e34b5-5372-402f-9800-d1f34e2535c0",
+      "name": "Right door",
+      "kind": "box",
+      "position": [
+        900,
+        -11,
+        1050
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        597,
+        18,
+        2096
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "83b38d98-7bc1-41a3-aa80-70756e131850",
+      "name": "Top",
+      "kind": "box",
+      "position": [
+        600,
+        300,
+        2091
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "size": [
+        1164,
+        600,
+        18
+      ],
+      "material": "plywood",
+      "faceMaterials": {},
+      "layer": "Furniture",
+      "groupId": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "visible": true,
+      "locked": false
+    }
+  ],
+  "groups": [
+    {
+      "id": "cb374567-babb-4ea9-acc9-6525b21c9056",
+      "name": "Assembly 1"
+    }
+  ],
+  "layers": [
+    {
+      "id": "Furniture",
+      "visible": true
+    },
+    {
+      "id": "Architecture",
+      "visible": true
+    },
+    {
+      "id": "Annotations",
+      "visible": true
+    }
+  ],
+  "settings": {
+    "unit": "mm",
+    "grid": 100,
+    "snap": 10,
+    "currency": "INR",
+    "waste": 10
+  },
+  "views": [],
+  "createdAt": "2026-09-10T09:28:11.925Z",
+  "updatedAt": "2026-09-10T09:31:09.246Z"
+}
