@@ -1,55 +1,57 @@
 # Cloudflare deployment
 
-The current Hazzino web app can run on Cloudflare Workers with Static Assets and SQLite-backed Durable Objects. The existing Express/MongoDB application remains available locally.
+## Furniture release — 10 September 2026
 
-## Published checkpoint — 10 September 2026
+- Live app: [hazzino-interiors.hazzino-studio.workers.dev](https://hazzino-interiors.hazzino-studio.workers.dev).
+- Source: `c963a9d` on [GitHub](https://github.com/Don-Gabriel/hazzino-interiors). The main furniture implementation is commit `8464c0b`; `c963a9d` adds machining-record import validation.
+- Cloudflare version: `a2c3fd16-325f-40a9-adba-8a293ac745b4`.
+- Published to the owner's authenticated account at approximately 2 pm IST, before the requested 3 pm deadline. This is a regular account deployment, with no temporary claim required.
+- 91 automated tests pass. Six integration tests pass against the public app, covering assets/deep links, cloud projects and checkpoints, browser-workspace isolation, invalid/cross-origin writes, large Unicode documents, and furniture/textured model round trips.
+- Browser verification created a 75-part sliding wardrobe, inspected moving fronts, generated its 32-panel cut list and a nine-sheet layout with no oversized parts, and saved it to Cloudflare. A separate test panel was machined into a mesh with eight through holes through the actual dialog. Saving and reloading preserved all 76 objects and the machining record. No browser console errors were observed in this workflow.
 
-- Live app: [hazzino-interiors.fanatical-tennis.workers.dev](https://hazzino-interiors.fanatical-tennis.workers.dev).
-- Source commit: `7f81fa7427216f82d869a50b1d756baf94dcd2d4` on [GitHub](https://github.com/Don-Gabriel/hazzino-interiors).
-- Cloudflare version: `21a79af2-f602-4c3c-b83c-ac91de18ea00`.
-- All 56 existing tests and five Cloudflare integration tests passed locally. All five deployment tests also passed against this public URL. A browser save succeeded and no browser errors were reported.
-- Published using a temporary preview account at approximately 11:19 am IST. The owner subsequently confirmed completing the Cloudflare claim. A follow-up health check returned HTTP 200 with cloud storage ready. Account ownership was not independently checked; Wrangler still needs sign-in to the claimed account before future deployments.
+The earlier preview at `hazzino-interiors.fanatical-tennis.workers.dev` belongs to a different account from the completed Wrangler login. It was not overwritten. Use the new URL above for the current furniture release. Browser recovery and cloud workspace cookies are origin-specific: export/import project JSON to transfer a design from the old preview or local application.
 
-## What works in the hosted build
+## Hosted features and storage
 
-- The existing browser modelling engine, workspace, materials, scenes and exports.
-- Cloud project save, list, reopen, update and delete.
-- Independent version checkpoints, including restoring earlier geometry.
-- Browser recovery and JSON backups.
-- Separate cloud storage for each browser workspace. An HttpOnly, SameSite cookie identifies that workspace. Clearing cookies or using another browser creates a different workspace; use JSON export/import to transfer designs. Account sign-in and cross-device synchronization are not implemented.
+The deployed app includes the furniture configurator, manual modelling, Offset, Push/Pull, Follow Me, solid booleans, panel machining, production tools and all eight converted SKP samples. See [FURNITURE-STUDIO.md](FURNITURE-STUDIO.md) for capabilities and limitations; this release is not complete SketchUp parity.
 
-The cloud API validates the same project schema as the local app and accepts request bodies up to 20 MiB. Project documents are stored in small SQLite rows, preserving large documents and Unicode content. Each document update and project deletion uses a transaction.
+The web app uses Cloudflare Workers with Static Assets and SQLite-backed Durable Objects. It supports project save, list, reopen, update and delete, independent version checkpoints, IndexedDB recovery and JSON backups. The existing Express/MongoDB application remains available locally.
 
-Gemini is not connected in this deployment. The built-in hospital template works; live Gemini generation remains available through the configured local app. Local `.env` secrets and the local MongoDB database are not uploaded. The supplied `.skp` files are reference assets in GitHub; the application does not yet import them natively.
+An HttpOnly, SameSite cookie identifies an anonymous browser workspace. Clearing cookies, changing domain or using another browser creates a different workspace. Account sign-in and cross-device synchronization are not implemented. JSON export/import transfers editable projects.
 
-The checkpoint above predates the current furniture studio. Offset, Follow Me, solid booleans, the converted SKP sample library and furniture production are now implemented in source. See [FURNITURE-STUDIO.md](FURNITURE-STUDIO.md) for current features and limitations.
+The cloud API validates the same project schema as the local app and accepts request bodies up to 20 MiB. Project documents are stored in small SQLite rows, preserving large documents, embedded textures and Unicode. Document updates and project deletion use transactions.
 
-## Development and checks
+Live Gemini generation is not connected to this cloud deployment. Local `.env` secrets and the MongoDB database are not uploaded. The browser uses converted SKP assets; native SKP decoding is not implemented.
+
+## Develop, test and publish
 
 ```sh
 npm ci
 npm run dev:cloudflare
 ```
 
-With the Cloudflare runtime on port 8787:
+With the local Cloudflare runtime on port 8787, run `npm run test:cloudflare`. The ordinary `npm test` suite also requires the local MongoDB API on port 3001 (`npm run dev`).
 
-```sh
+To test the public deployment in PowerShell:
+
+```powershell
+$env:CLOUDFLARE_TEST_URL = 'https://hazzino-interiors.hazzino-studio.workers.dev'
 npm run test:cloudflare
 ```
 
-The five integration tests exercise asset serving and deep links, model/checkpoint round trips, isolation between browser workspaces, rejection of invalid and cross-origin writes, and large Unicode documents. The ordinary `npm test` suite additionally needs the local MongoDB API on port 3001.
-
-`npm run build` and `wrangler deploy --dry-run` verify the deployment bundle. Production dependency audit is clear at this checkpoint. Wrangler's development dependency chain reports a Sharp/libheif advisory; this app does not use Cloudflare image transformation bindings, and that package is not included in its deployed Worker or browser bundle.
-
-## Publish to an account
+The integration tests create isolated workspaces and remove their own generated test projects. `npm run build` and `npx wrangler deploy --dry-run` validate the bundle. `npm audit` reports zero vulnerabilities with the committed Sharp 0.35.4 override.
 
 ```sh
 npx wrangler login
 npm run deploy:cloudflare
 ```
 
-Wrangler publishes `hazzino-interiors` and its database binding from [wrangler.jsonc](../wrangler.jsonc). Use the URL printed by the successful deployment. No custom domain is required.
+Wrangler 4.130.0 is pinned in the project. It publishes `hazzino-interiors`, static assets and the Durable Object binding from [wrangler.jsonc](../wrangler.jsonc), which identifies the authenticated owner account. Use the successful deployment's printed URL. No custom domain is required. Initial workers.dev DNS/TLS provisioning took a short time; subsequent HTTPS and browser checks passed normally.
 
-An unauthenticated preview can instead be deployed using `npx wrangler deploy --temporary`. Cloudflare returns a private claim link which the owner must complete within 60 minutes to retain the account and deployment. Never put that claim link or credentials into GitHub. After claiming, authenticate Wrangler to the claimed account for future deployments.
+## Codex Cloudflare setup
 
-Official references: [Static Assets](https://developers.cloudflare.com/workers/static-assets/), [SQLite storage](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/), [claiming preview deployments](https://developers.cloudflare.com/workers/platform/claim-deployments/).
+Following [Cloudflare's agent setup instructions](https://developers.cloudflare.com/agent-setup/prompt.md), 14 Cloudflare skills and five MCP server registrations were installed in the user's global Codex/agent configuration. The main Cloudflare, bindings, builds and observability connectors each completed OAuth; the documentation connector is public. These tools become available after a Codex restart. Wrangler publishing is already authenticated and works independently of that restart.
+
+No OAuth credentials, claim links or local secrets are committed to this repository.
+
+Official references: [Static Assets](https://developers.cloudflare.com/workers/static-assets/), [SQLite storage](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/), [Wrangler deployment](https://developers.cloudflare.com/workers/wrangler/commands/#deploy).

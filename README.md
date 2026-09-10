@@ -4,7 +4,7 @@ A browser furniture design studio for modular kitchens, wardrobes, study/work ta
 
 Start with **Build furniture** in the header, or the **Furniture** menu. See [the furniture guide](documentation/FURNITURE-STUDIO.md) for construction options, modelling, imports and production workflows. The interface follows the supplied SketchUp reference in Hazzino's green and cream style; full SketchUp parity is not claimed.
 
-The web app also has a Cloudflare deployment with cloud project storage and checkpoints. See [Cloudflare deployment](documentation/CLOUDFLARE.md) for publishing, testing and storage details, and [the SketchUp feature audit](documentation/SKETCHUP-WORKSPACE.md) for the current implementation and remaining gaps.
+**[Open the live furniture studio](https://hazzino-interiors.hazzino-studio.workers.dev)**. Cloud project storage and checkpoints are included. See [Cloudflare deployment](documentation/CLOUDFLARE.md) for publishing, testing and storage details, and [the SketchUp feature audit](documentation/SKETCHUP-WORKSPACE.md) for the current implementation and remaining gaps.
 
 ## Open the application
 

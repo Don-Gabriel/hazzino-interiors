@@ -2,8 +2,8 @@
 
 ## Automated checks
 
-- `npm test`: 90 passing tests at the furniture release checkpoint.
-- `npm run test:cloudflare`: six passing integration tests against the local Worker runtime, including the generated sliding wardrobe and a textured native cabinet round trip.
+- `npm test`: 91 passing tests at the furniture release checkpoint, including rejection of malformed machining records before import/reporting.
+- `npm run test:cloudflare`: six passing integration tests against the local Worker runtime and the public deployment, including the generated sliding wardrobe and a textured native cabinet round trip.
 - `npm run build`: passed; browser geometry kernel WASM is bundled as a static asset.
 - `wrangler deploy --dry-run`: passed with the existing Worker/static-assets/Durable-Object configuration.
 - `npm audit`: zero vulnerabilities after pinning Sharp 0.35.4 through an override. Both Manifold's optional image-processing dependency chain and Wrangler's Miniflare chain now resolve the patched version.
@@ -20,5 +20,8 @@ The earlier modelling tests also cover face offsets with holes, host recesses an
 - Inspected an L-shaped kitchen preview with its automatically added blind corner, worktop joint and wall cabinets.
 - Used the supported WebMCP board tool to add a 600 × 400 × 18 mm test panel. Through the actual machining dialog, cut eight through holes and verified the resulting mesh and machining record through `read_design`. Saved the project with `save_design`.
 - Earlier browser checks exercised a 1,000 mm cube, a 100 mm face inset and a 300 mm recess cut into the host, plus drawing/camera/material/scene workflows documented in the workspace audit.
+- On the public deployment, generated a 75-part sliding wardrobe, inspected its open preview, saved it to Cloudflare and calculated its 32-panel cut list and nine-sheet layout (72.8% area use, no oversized parts).
+- On the same live site, machined eight through holes in a separate 600 × 400 × 18 mm board through the actual machining dialog. Saved and reloaded the 76-object project and verified that the wardrobe, mesh and hole record survived. This exercised the deployed WASM kernel and IndexedDB recovery. No console errors were observed.
+- The in-app browser did not expose a download event for the HTML production-report button. Report generation and escaping are covered by automated checks; this browser session does not establish a completed file download.
 
 These are functional checks, not certification of full SketchUp parity, manufacturing readiness or every possible combination of parameters. See [the furniture guide](FURNITURE-STUDIO.md) for scope and limitations. Live deployment results are recorded in [CLOUDFLARE.md](CLOUDFLARE.md).
